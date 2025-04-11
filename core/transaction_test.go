@@ -35,3 +35,13 @@ func TestTranscactionPool(t *testing.T) {
 		assert.True(t, txx[i].FirstSeen() < txx[i+1].FirstSeen())
 	}
 }
+
+func newSignedTransaction(t *testing.T, data []byte) *Transaction {
+	tx := NewTransaction(data)
+	privateKey := crypto.GeneratePrivateKey()
+
+	assert.Nil(t, tx.Sign(privateKey))
+	assert.Nil(t, tx.Verify())
+	
+	return tx
+}

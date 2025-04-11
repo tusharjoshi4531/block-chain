@@ -40,3 +40,4 @@ func TestSendMessage(t *testing.T) {
 
 	assert.Equal(t, msgrv, msg)
 }
+

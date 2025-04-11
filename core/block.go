@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/gob"
 	"io"
+	"time"
 
 	"github.com/tusharjoshi4531/block-chain.git/crypto"
 	"github.com/tusharjoshi4531/block-chain.git/types"
@@ -40,6 +41,19 @@ type Block struct {
 	hash types.Hash
 }
 
+func NewBlock() *Block {
+	return &Block{
+		Header: BlockHeader{
+			Version:       0,
+			DataHash:      types.Hash{},
+			PrevBlockHash: types.Hash{},
+			Timestamp:     time.Now().UnixNano(),
+			Height:        0,
+		},
+		Transactions: []*Transaction{},
+	}
+}
+
 func (block *Block) Hash() (types.Hash, error) {
 	if !block.hash.IsZero() {
 		return block.hash, nil
@@ -72,4 +86,8 @@ func (block *Block) DataHash() (types.Hash, error) {
 
 	dataHash := sha256.Sum256(buf.Bytes())
 	return dataHash, nil
+}
+
+func (block *Block) AddTransaction(transaction *Transaction) {
+	block.Transactions = append(block.Transactions, transaction)
 }

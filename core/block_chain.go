@@ -10,14 +10,17 @@ import (
 type BlockChain interface {
 	AddBlock(*Block) error
 	GetHeighestBlock() *Block
+	GetGenesis() *Block
 	GetPrevBlock(*Block) (*Block, error)
 	GetBlockWithHash(types.Hash) (*Block, error)
+	Height() uint32
 }
 
 type DefaultBlockChain struct {
 	height         uint32
 	blocks         map[types.Hash]*Block
 	blocksAtHeight map[uint32][]*Block
+	genesis        *Block
 }
 
 func NewDefaultBlockChain() *DefaultBlockChain {
@@ -35,8 +38,13 @@ func NewDefaultBlockChain() *DefaultBlockChain {
 	}
 
 	chain.addBlockWithoutValidation(hash, genesisBlock)
+	chain.genesis = genesisBlock
 
 	return chain
+}
+
+func (blockChain *DefaultBlockChain) GetGenesis() *Block {
+	return blockChain.genesis
 }
 
 func (blockChain *DefaultBlockChain) AddBlock(block *Block) error {
@@ -94,4 +102,8 @@ func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.H
 	}
 	blockChain.blocksAtHeight[blockHeight] = append(blockChain.blocksAtHeight[blockHeight], block)
 	blockChain.height = max(blockChain.height, blockHeight)
+}
+
+func (BlockChain *DefaultBlockChain) Height() uint32 {
+	return BlockChain.height
 }

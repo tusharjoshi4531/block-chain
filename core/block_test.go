@@ -25,7 +25,7 @@ func TestBlockValidator(t *testing.T) {
 	assert.NotNil(t, DefaultValidator{}.ValidateBlock(block))
 }
 
-func TestSignBloc(t *testing.T) {
+func TestSignBlock(t *testing.T) {
 	block := NewBlock()
 	tx1 := newSignedTransaction(t, []byte("FOOO"))
 	tx2 := newSignedTransaction(t, []byte("BARR"))

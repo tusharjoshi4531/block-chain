@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/gob"
+	"fmt"
 	"io"
 	"time"
 
@@ -90,4 +91,50 @@ func (block *Block) DataHash() (types.Hash, error) {
 
 func (block *Block) AddTransaction(transaction *Transaction) {
 	block.Transactions = append(block.Transactions, transaction)
+}
+
+
+func (block *Block) Sign(privateKey *ecdsa.PrivateKey) error {
+	// Hash block
+	block.Hash()
+
+	headerBytes, err := block.getHeaderBytes()
+	if err != nil {
+		return err
+	}
+
+	sig, err := crypto.SignBytes(privateKey, headerBytes)
+	if err != nil {
+		return err
+	}
+
+	block.Signature = sig
+	block.Validator = &privateKey.PublicKey
+
+	return nil
+}
+
+func (block *Block) Verify() error {
+	if block.Signature == nil {
+		return fmt.Errorf("block has no signature")
+	}
+
+	headerBytes, err := block.getHeaderBytes()
+	if err != nil {
+		return err
+	}
+
+	if !block.Signature.Verify(block.Validator, headerBytes) {
+		return fmt.Errorf("incorrect sign in transaction")
+	}
+
+	return nil
+}
+
+func (block *Block) getHeaderBytes() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	if err := block.Header.Bytes(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

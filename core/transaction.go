@@ -3,7 +3,9 @@ package core
 import (
 	"crypto/ecdsa"
 	"crypto/sha256"
+	"encoding/gob"
 	"fmt"
+	"io"
 
 	"github.com/tusharjoshi4531/block-chain.git/crypto"
 	"github.com/tusharjoshi4531/block-chain.git/types"
@@ -54,6 +56,20 @@ func (tx *Transaction) Verify() error {
 		return fmt.Errorf("incorrect sign in transaction")
 	}
 
+	return nil
+}
+
+func (tx *Transaction) Bytes(w io.Writer) error {
+	enc := gob.NewEncoder(w)
+	if err := enc.Encode(tx.Data); err != nil {
+		return err
+	}
+	if err := enc.Encode(crypto.SerializePublicKey(tx.From)); err != nil {
+		return err
+	}
+	if err := enc.Encode(tx.Signature); err != nil {
+		return err
+	}
 	return nil
 }
 

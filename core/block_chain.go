@@ -13,7 +13,7 @@ type BlockChain interface {
 	GetGenesis() *Block
 	GetPrevBlock(*Block) (*Block, error)
 	GetBlockWithHash(types.Hash) (*Block, error)
-	HasTransactionInChain(types.Hash, types.Hash) error
+	HasTransactionInChain(transactionHash types.Hash, blockHash types.Hash) error
 	Height() uint32
 }
 
@@ -116,7 +116,6 @@ func (blockChain *DefaultBlockChain) HasTransactionInChain(transactionHash types
 	}
 	return fmt.Errorf("transaction with hash (%s) is not present in the block chain", transactionHash)
 }
-
 
 func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.Hash, block *Block) {
 	blockHeight := block.Header.Height

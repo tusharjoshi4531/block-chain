@@ -10,6 +10,7 @@ import (
 type TransactionPool interface {
 	AddTransaction(tx *Transaction) error
 	Len() int
+	Transactions() []*Transaction
 }
 
 type DefaultTransactionPool struct {

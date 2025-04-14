@@ -1,6 +1,7 @@
 package network
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +10,7 @@ import (
 func TestConnect(t *testing.T) {
 	ta := NewLocalTransport("A")
 	tb := NewLocalTransport("B")
-	
+
 	assert.Nil(t, ta.Connect(tb))
 	assert.Nil(t, tb.Connect(ta))
 
@@ -20,7 +21,7 @@ func TestConnect(t *testing.T) {
 func TestSendMessage(t *testing.T) {
 	ta := NewLocalTransport("A")
 	tb := NewLocalTransport("B")
-	
+
 	assert.Nil(t, ta.Connect(tb))
 	assert.Nil(t, tb.Connect(ta))
 
@@ -28,10 +29,8 @@ func TestSendMessage(t *testing.T) {
 	assert.Equal(t, tb.peers["A"], ta)
 
 	payload := []byte("Hello from A")
-	msg := Message {
-		Header: MessageHeader{
-			From: "A",
-		},
+	msg := Message{
+		From:    "A",
 		Payload: payload,
 	}
 
@@ -41,3 +40,31 @@ func TestSendMessage(t *testing.T) {
 	assert.Equal(t, msgrv, msg)
 }
 
+func TestBroadcastMessage(t *testing.T) {
+	ts := []*LocalTransport{
+		NewLocalTransport("A"),
+		NewLocalTransport("B"),
+		NewLocalTransport("C"),
+		NewLocalTransport("D"),
+	}
+
+	for i := 0; i < 4; i++ {
+		for j := i + 1; j < 4; j++ {
+			assert.Nil(t, ts[i].Connect(ts[j]))
+			assert.Nil(t, ts[j].Connect(ts[i]))
+		}
+	}
+
+	numMsg := 100
+	for i := 0; i < numMsg; i++ {
+		payload := []byte("Hello No: " + strconv.Itoa(i))
+		msg := NewMessage(ts[0].Address(), payload)
+
+		assert.Nil(t, ts[0].BroadCastMessage(msg))
+
+		for j := 1; j < 4; j++ {
+			msgrv := <-ts[j].Receive()
+			assert.Equal(t, &msgrv, msg)
+		}
+	}
+}

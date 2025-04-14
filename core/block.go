@@ -21,13 +21,25 @@ type BlockHeader struct {
 	Height        uint32
 }
 
-func (header *BlockHeader) Bytes(w io.Writer) error {
+func (header *BlockHeader) Encode(w io.Writer) error {
 	return gob.NewEncoder(w).Encode(header)
+}
+
+func (header *BlockHeader) Bytes() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	if err := header.Encode(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (header *BlockHeader) Decode(r io.Reader) error {
+	return gob.NewDecoder(r).Decode(header)
 }
 
 func (header *BlockHeader) Hash() (types.Hash, error) {
 	buf := &bytes.Buffer{}
-	if err := header.Bytes(buf); err != nil {
+	if err := header.Encode(buf); err != nil {
 		return types.Hash{}, err
 	}
 	return sha256.Sum256(buf.Bytes()), nil
@@ -52,6 +64,8 @@ func NewBlock() *Block {
 			Height:        0,
 		},
 		Transactions: []*Transaction{},
+		Validator:    &ecdsa.PublicKey{},
+		Signature:    &crypto.Signature{},
 	}
 }
 
@@ -77,12 +91,41 @@ func (block *Block) Hash() (types.Hash, error) {
 	return block.hash, nil
 }
 
+func (block *Block) EncodeData(w io.Writer) error {
+	len := len(block.Transactions)
+	if err := gob.NewEncoder(w).Encode(len); err != nil {
+		return err
+	}
+
+	for _, transaction := range block.Transactions {
+		if err := transaction.Encode(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (block *Block) DecodeData(r io.Reader) error {
+	len := 0
+	if err := gob.NewDecoder(r).Decode(&len); err != nil {
+		return err
+	}
+
+	block.Transactions = make([]*Transaction, 0, len)
+	for i := 0; i < len; i++ {
+		transaction := NewTransaction([]byte{})
+		if err := transaction.Decode(r); err != nil {
+			return err
+		}
+		block.Transactions = append(block.Transactions, transaction)
+	}
+	return nil
+}
+
 func (block *Block) DataHash() (types.Hash, error) {
 	buf := &bytes.Buffer{}
-	for _, transaction := range block.Transactions {
-		if err := transaction.Bytes(buf); err != nil {
-			return types.Hash{}, err
-		}
+	if err := block.EncodeData(buf); err != nil {
+		return types.Hash{}, err
 	}
 
 	dataHash := sha256.Sum256(buf.Bytes())
@@ -93,12 +136,11 @@ func (block *Block) AddTransaction(transaction *Transaction) {
 	block.Transactions = append(block.Transactions, transaction)
 }
 
-
 func (block *Block) Sign(privateKey *ecdsa.PrivateKey) error {
 	// Hash block
 	block.Hash()
 
-	headerBytes, err := block.getHeaderBytes()
+	headerBytes, err := block.Header.Bytes()
 	if err != nil {
 		return err
 	}
@@ -119,7 +161,7 @@ func (block *Block) Verify() error {
 		return fmt.Errorf("block has no signature")
 	}
 
-	headerBytes, err := block.getHeaderBytes()
+	headerBytes, err := block.Header.Bytes()
 	if err != nil {
 		return err
 	}
@@ -131,10 +173,57 @@ func (block *Block) Verify() error {
 	return nil
 }
 
-func (block *Block) getHeaderBytes() ([]byte, error) {
+func (block *Block) Encode(w io.Writer) error {
+	if err := block.Header.Encode(w); err != nil {
+		return err
+	}
+	if err := block.EncodeData(w); err != nil {
+		return err
+	}
+	if err := crypto.SerializePublicKey(block.Validator).Encode(w); err != nil {
+		return err
+	}
+	if err :=block.Signature.Encode(w); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (block *Block) Bytes() ([]byte, error) {
 	buf := &bytes.Buffer{}
-	if err := block.Header.Bytes(buf); err != nil {
+	if err := block.Encode(buf); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func (block *Block) Decode(r io.Reader) error {
+	if err := block.Header.Decode(r); err != nil {
+		return err
+	}
+
+	if err := block.DecodeData(r); err != nil {
+		return err
+	}
+
+	serializedValidator := &crypto.SerializedPublicKey{}
+	if err := serializedValidator.Decode(r); err != nil {
+		return err
+	}
+	block.Validator = crypto.DecodePublicKey(serializedValidator)
+
+	if err := block.Signature.Decode(r); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (block *Block) HasTranaction(hash types.Hash) bool {
+	for _, transaction := range block.Transactions {
+		if transaction.Hash() == hash {
+			return true
+		}
+	}
+	return false
 }

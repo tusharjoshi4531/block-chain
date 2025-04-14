@@ -46,6 +46,13 @@ func (t *LocalTransport) SendMessage(to string, msg *Message) error {
 	return nil
 }
 
+func (t *LocalTransport) BroadCastMessage(msg *Message) error {
+	for k, _ := range t.peers {
+		t.SendMessage(k, msg)
+	}
+	return nil
+}
+
 func (t *LocalTransport) Address() string {
 	return t.address
 }

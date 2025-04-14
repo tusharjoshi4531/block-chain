@@ -13,6 +13,7 @@ type BlockChain interface {
 	GetGenesis() *Block
 	GetPrevBlock(*Block) (*Block, error)
 	GetBlockWithHash(types.Hash) (*Block, error)
+	HasTransactionInChain(types.Hash, types.Hash) error
 	Height() uint32
 }
 
@@ -93,6 +94,30 @@ func (blockChain *DefaultBlockChain) GetBlockWithHash(hash types.Hash) (*Block, 
 	return block, nil
 }
 
+func (blockChain *DefaultBlockChain) Height() uint32 {
+	return blockChain.height
+}
+
+func (blockChain *DefaultBlockChain) HasTransactionInChain(transactionHash types.Hash, tailBlockHash types.Hash) error {
+	currBlockHash := tailBlockHash
+	for {
+		currBlock, ok := blockChain.blocks[currBlockHash]
+		if !ok {
+			return fmt.Errorf("block with hash (%s) is not present in the block chain", tailBlockHash)
+		}
+		if currBlock.Header.Height == 0 {
+			break
+		}
+
+		if currBlock.HasTranaction(transactionHash) {
+			return nil
+		}
+		currBlockHash = currBlock.Header.PrevBlockHash
+	}
+	return fmt.Errorf("transaction with hash (%s) is not present in the block chain", transactionHash)
+}
+
+
 func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.Hash, block *Block) {
 	blockHeight := block.Header.Height
 
@@ -102,8 +127,4 @@ func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.H
 	}
 	blockChain.blocksAtHeight[blockHeight] = append(blockChain.blocksAtHeight[blockHeight], block)
 	blockChain.height = max(blockChain.height, blockHeight)
-}
-
-func (BlockChain *DefaultBlockChain) Height() uint32 {
-	return BlockChain.height
 }

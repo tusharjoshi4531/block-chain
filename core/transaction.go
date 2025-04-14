@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/gob"
@@ -23,7 +24,9 @@ type Transaction struct {
 
 func NewTransaction(data []byte) *Transaction {
 	return &Transaction{
-		Data: data,
+		Data:      data,
+		From:      &ecdsa.PublicKey{},
+		Signature: &crypto.Signature{},
 	}
 }
 
@@ -59,15 +62,41 @@ func (tx *Transaction) Verify() error {
 	return nil
 }
 
-func (tx *Transaction) Bytes(w io.Writer) error {
+func (tx *Transaction) Encode(w io.Writer) error {
 	enc := gob.NewEncoder(w)
 	if err := enc.Encode(tx.Data); err != nil {
 		return err
 	}
-	if err := enc.Encode(crypto.SerializePublicKey(tx.From)); err != nil {
+	if err := crypto.SerializePublicKey(tx.From).Encode(w); err != nil {
 		return err
 	}
-	if err := enc.Encode(tx.Signature); err != nil {
+	if err := tx.Signature.Encode(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tx *Transaction) Bytes() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	if err := tx.Encode(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (tx *Transaction) Decode(r io.Reader) error {
+	dec := gob.NewDecoder(r)
+
+	if err := dec.Decode(&tx.Data); err != nil {
+		return err
+	}
+	serializedFrom := &crypto.SerializedPublicKey{}
+	if err := serializedFrom.Decode(r); err != nil {
+		return err
+	}
+	tx.From = crypto.DecodePublicKey(serializedFrom)
+
+	if err := tx.Signature.Decode(r); err != nil {
 		return err
 	}
 	return nil

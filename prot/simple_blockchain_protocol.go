@@ -33,7 +33,7 @@ func (valdator *SimpleValidator) ValidateBlock(block *core.Block) error {
 	}
 
 	if err := block.Sign(valdator.privateKey); err != nil {
-		return err;
+		return err
 	}
 	return nil
 }
@@ -42,6 +42,14 @@ type SimpleMiner struct {
 	blockChain      core.BlockChain
 	transactionPool core.TransactionPool
 	privateKey      *ecdsa.PrivateKey
+}
+
+func NewSimpleMiner(blockChain core.BlockChain, transactionPool core.TransactionPool, privateKey *ecdsa.PrivateKey) *SimpleMiner {
+	return &SimpleMiner{
+		blockChain:      blockChain,
+		transactionPool: transactionPool,
+		privateKey:      privateKey,
+	}
 }
 
 func (miner *SimpleMiner) MineBlock(transactionsLimit uint32) (*core.Block, error) {

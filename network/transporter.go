@@ -13,10 +13,10 @@ func NewMessage(from string, payload []byte) *Message {
 	}
 }
 
-
-type Transporter interface {
+type Transport interface {
 	Receive() <-chan Message
-	Connect(Transporter) error
+	Chan() chan<- Message
+	Connect(Transport) error
 	SendMessage(string, *Message) error
 	BroadCastMessage(*Message) error
 	Address() string

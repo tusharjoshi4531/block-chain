@@ -7,7 +7,7 @@ import (
 
 type LocalTransport struct {
 	address       string
-	peers         map[string]*LocalTransport
+	peers         map[string]Transport
 	lock          sync.RWMutex
 	messageChanel chan Message
 }
@@ -15,7 +15,7 @@ type LocalTransport struct {
 func NewLocalTransport(address string) *LocalTransport {
 	return &LocalTransport{
 		address:       address,
-		peers:         make(map[string]*LocalTransport),
+		peers:         make(map[string]Transport),
 		messageChanel: make(chan Message, 1024),
 	}
 }
@@ -24,11 +24,15 @@ func (t *LocalTransport) Receive() <-chan Message {
 	return t.messageChanel
 }
 
-func (t *LocalTransport) Connect(otherTransporter Transporter) error {
+func (t *LocalTransport) Chan() chan<- Message {
+	return t.messageChanel
+}
+
+func (t *LocalTransport) Connect(otherTransport Transport) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	t.peers[otherTransporter.Address()] = otherTransporter.(*LocalTransport)
+	t.peers[otherTransport.Address()] = otherTransport
 
 	return nil
 }
@@ -42,12 +46,12 @@ func (t *LocalTransport) SendMessage(to string, msg *Message) error {
 		return fmt.Errorf("sender (%s) is not connected to receiver (%s)", t.Address(), to)
 	}
 
-	peer.messageChanel <- *msg
+	peer.Chan() <- *msg
 	return nil
 }
 
 func (t *LocalTransport) BroadCastMessage(msg *Message) error {
-	for k, _ := range t.peers {
+	for k := range t.peers {
 		t.SendMessage(k, msg)
 	}
 	return nil

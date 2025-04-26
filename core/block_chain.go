@@ -2,8 +2,6 @@ package core
 
 import (
 	"fmt"
-	"math/rand"
-
 	"github.com/tusharjoshi4531/block-chain.git/types"
 )
 
@@ -14,7 +12,10 @@ type BlockChain interface {
 	GetPrevBlock(*Block) (*Block, error)
 	GetBlockWithHash(types.Hash) (*Block, error)
 	HasTransactionInChain(transactionHash types.Hash, blockHash types.Hash) error
+	GetTransactionsInChain(blockHash types.Hash) ([]*Transaction, error)
 	Height() uint32
+
+	GetHashChain() []types.Hash
 }
 
 type DefaultBlockChain struct {
@@ -22,6 +23,7 @@ type DefaultBlockChain struct {
 	blocks         map[types.Hash]*Block
 	blocksAtHeight map[uint32][]*Block
 	genesis        *Block
+	heighestBlock  *Block
 }
 
 func NewDefaultBlockChain() *DefaultBlockChain {
@@ -29,6 +31,7 @@ func NewDefaultBlockChain() *DefaultBlockChain {
 		height:         0,
 		blocks:         make(map[types.Hash]*Block),
 		blocksAtHeight: make(map[uint32][]*Block),
+		heighestBlock:  nil,
 	}
 	// TODO: Add genesis block
 	genesisBlock := NewBlock()
@@ -71,15 +74,10 @@ func (blockChain *DefaultBlockChain) AddBlock(block *Block) error {
 }
 
 func (blockChain *DefaultBlockChain) GetHeighestBlock() *Block {
-	blocks, ok := blockChain.blocksAtHeight[blockChain.height]
-	if !ok {
-		panic("block chain height is longer than existing blocks heights")
+	if blockChain.heighestBlock == nil {
+		panic("No heighest block exists in blockchain")
 	}
-
-	numBlocks := len(blocks)
-	idx := rand.Int31n(int32(numBlocks))
-
-	return blocks[idx]
+	return blockChain.heighestBlock
 }
 
 func (blockChain *DefaultBlockChain) GetPrevBlock(block *Block) (*Block, error) {
@@ -117,6 +115,31 @@ func (blockChain *DefaultBlockChain) HasTransactionInChain(transactionHash types
 	return fmt.Errorf("transaction with hash (%s) is not present in the block chain", transactionHash)
 }
 
+func (blockChain *DefaultBlockChain) GetTransactionsInChain(tailBlockHash types.Hash) ([]*Transaction, error) {
+	currBlockHash := tailBlockHash
+	blocks := make([]*Block, 0)
+	for {
+		currBlock, ok := blockChain.blocks[currBlockHash]
+		if !ok {
+			return nil, fmt.Errorf("block with hash (%s) is not present in the block chain", tailBlockHash)
+		}
+		if currBlock.Header.Height == 0 {
+			break
+		}
+
+		// transactions = append(transactions, currBlock.Transactions...)
+		blocks = append(blocks, currBlock)
+		currBlockHash = currBlock.Header.PrevBlockHash
+	}
+
+	transactions := make([]*Transaction, 0)
+	for i := len(blocks) - 1; i >= 0; i-- {
+		currBlock := blocks[i]
+		transactions = append(transactions, currBlock.Transactions...)
+	}
+	return transactions, nil
+}
+
 func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.Hash, block *Block) {
 	blockHeight := block.Header.Height
 
@@ -125,5 +148,17 @@ func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.H
 		blockChain.blocksAtHeight = make(map[uint32][]*Block)
 	}
 	blockChain.blocksAtHeight[blockHeight] = append(blockChain.blocksAtHeight[blockHeight], block)
-	blockChain.height = max(blockChain.height, blockHeight)
+
+	if blockHeight >= blockChain.height {
+		blockChain.height = blockHeight
+		blockChain.heighestBlock = block
+	}
+}
+
+func (blockChain *DefaultBlockChain) GetHashChain() []types.Hash {
+	chain := make([]types.Hash, len(blockChain.blocks))
+	for hash := range blockChain.blocks {
+		chain = append(chain, hash)
+	}
+	return chain
 }

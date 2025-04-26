@@ -69,6 +69,13 @@ func NewBlock() *Block {
 	}
 }
 
+func NewBlockWithHeaderInfo(height uint32, prevBlockHash types.Hash) *Block {
+	block := NewBlock()
+	block.Header.Height = height
+	block.Header.PrevBlockHash = prevBlockHash
+	return block
+}
+
 func (block *Block) Hash() (types.Hash, error) {
 	if !block.hash.IsZero() {
 		return block.hash, nil
@@ -183,7 +190,7 @@ func (block *Block) Encode(w io.Writer) error {
 	if err := crypto.SerializePublicKey(block.Validator).Encode(w); err != nil {
 		return err
 	}
-	if err :=block.Signature.Encode(w); err != nil {
+	if err := block.Signature.Encode(w); err != nil {
 		return err
 	}
 

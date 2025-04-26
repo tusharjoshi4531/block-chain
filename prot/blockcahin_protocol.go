@@ -11,6 +11,6 @@ type Miner interface {
 }
 
 type Comsumer interface {
-	AddTransaction(*core.Transaction)
-	GetTransactions([]*core.Transaction)
+	AddTransaction(*core.Transaction) error
+	GetTransactions() ([]*core.Transaction, error)
 }

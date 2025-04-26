@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/tusharjoshi4531/block-chain.git/types"
 )
@@ -14,6 +15,7 @@ type TransactionPool interface {
 }
 
 type DefaultTransactionPool struct {
+	mu           sync.RWMutex
 	transacitons map[types.Hash]*Transaction
 }
 
@@ -24,6 +26,8 @@ func NewDefaultTransactionPool() *DefaultTransactionPool {
 }
 
 func (txPool *DefaultTransactionPool) AddTransaction(tx *Transaction) error {
+	txPool.mu.Lock()
+	defer txPool.mu.Unlock()
 
 	hash := tx.Hash()
 	if _, ok := txPool.transacitons[hash]; ok {
@@ -34,6 +38,9 @@ func (txPool *DefaultTransactionPool) AddTransaction(tx *Transaction) error {
 }
 
 func (txPool *DefaultTransactionPool) Transactions() []*Transaction {
+	txPool.mu.RLock()
+	defer txPool.mu.RUnlock()
+
 	transactions := make([]*Transaction, 0, txPool.Len())
 	for _, transaction := range txPool.transacitons {
 		transactions = append(transactions, transaction)
@@ -47,5 +54,8 @@ func (txPool *DefaultTransactionPool) Transactions() []*Transaction {
 }
 
 func (txPool *DefaultTransactionPool) Len() int {
+	txPool.mu.RLock()
+	defer txPool.mu.RUnlock()
+	
 	return len(txPool.transacitons)
 }

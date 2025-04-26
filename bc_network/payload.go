@@ -11,7 +11,7 @@ import (
 
 const (
 	MessageTransaction int = iota
-	MessageBlock
+	MessageHashChain
 	// MessageTXSync
 )
 
@@ -32,15 +32,19 @@ func NewBCTransactionPayload(tx *core.Transaction) (*BCPayload, error) {
 	}, nil
 }
 
-func NewBlockMessage(block *core.Block) (*BCPayload, error) {
-	blockBytes, err := block.Bytes()
-	if err != nil {
+func NewBCHashChain(blockChain core.BlockChain) (*BCPayload, error) {
+	hashChain := blockChain.GetHashChain()
+
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+
+	if err := enc.Encode(hashChain); err != nil {
 		return nil, err
 	}
 
 	return &BCPayload{
-		MsgType: MessageBlock,
-		Payload: blockBytes,
+		MsgType: MessageHashChain,
+		Payload: buf.Bytes(),
 	}, nil
 }
 

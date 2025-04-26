@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
+	bcnetwork "github.com/tusharjoshi4531/block-chain.git/bc_network"
 	"github.com/tusharjoshi4531/block-chain.git/core"
 )
 
@@ -88,4 +89,37 @@ func (miner *SimpleMiner) MineBlock(transactionsLimit uint32) (*core.Block, erro
 	block.AddTransaction(reward)
 
 	return block, nil
+}
+
+type SimpleConsumer struct {
+	blockChain      core.BlockChain
+	transactionPool core.TransactionPool
+	// privateKey      *ecdsa.PrivateKey
+	transport bcnetwork.BlockChainTransport
+}
+
+func NewSimpleConsumer(blockChain core.BlockChain, transactionPool core.TransactionPool, transport bcnetwork.BlockChainTransport) *SimpleConsumer {
+	return &SimpleConsumer{
+		blockChain:      blockChain,
+		transactionPool: transactionPool,
+		transport:       transport,
+	}
+}
+
+func (consumer *SimpleConsumer) AddTransaction(transaction *core.Transaction) error {
+	if err := consumer.transactionPool.AddTransaction(transaction); err != nil {
+		return err
+	}
+	return consumer.transport.BroadcastTransaction(transaction)
+}
+
+func (consumer *SimpleConsumer) GetTransactions() ([]*core.Transaction, error) {
+	// TODO: implement get transaction in longest chain
+	blockChain := consumer.blockChain
+	block := blockChain.GetHeighestBlock()
+	blockHash, err := block.Hash()
+	if err != nil {
+		return nil, err
+	}
+	return blockChain.GetTransactionsInChain(blockHash)
 }

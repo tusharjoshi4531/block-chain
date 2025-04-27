@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/gob"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/tusharjoshi4531/block-chain.git/crypto"
 	"github.com/tusharjoshi4531/block-chain.git/types"
+	"github.com/tusharjoshi4531/block-chain.git/util"
 )
 
 type Transaction struct {
@@ -77,11 +77,7 @@ func (tx *Transaction) Encode(w io.Writer) error {
 }
 
 func (tx *Transaction) Bytes() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	if err := tx.Encode(buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return util.EncodeToBytes(tx)
 }
 
 func (tx *Transaction) Decode(r io.Reader) error {
@@ -90,7 +86,7 @@ func (tx *Transaction) Decode(r io.Reader) error {
 	if err := dec.Decode(&tx.Data); err != nil {
 		return err
 	}
-	serializedFrom := &crypto.SerializedPublicKey{}
+	serializedFrom := &crypto.SerializablePublicKey{}
 	if err := serializedFrom.Decode(r); err != nil {
 		return err
 	}

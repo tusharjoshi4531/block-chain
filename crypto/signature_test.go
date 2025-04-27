@@ -14,7 +14,7 @@ func TestPublicKeyEncode(t *testing.T) {
 	buf := &bytes.Buffer{}
 	assert.Nil(t, SerializePublicKey(&pubKey).Encode(buf))
 
-	decodedPk := &SerializedPublicKey{}
+	decodedPk := &SerializablePublicKey{}
 	assert.Nil(t, decodedPk.Decode(buf))
 
 	pubKey2 := DecodePublicKey(decodedPk)

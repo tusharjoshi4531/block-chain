@@ -12,6 +12,8 @@ type TransactionPool interface {
 	AddTransaction(tx *Transaction) error
 	Len() int
 	Transactions() []*Transaction
+	GetTransaction(types.Hash) (*Transaction, error)
+	HasTransaction(types.Hash) bool
 }
 
 type DefaultTransactionPool struct {
@@ -56,6 +58,19 @@ func (txPool *DefaultTransactionPool) Transactions() []*Transaction {
 func (txPool *DefaultTransactionPool) Len() int {
 	txPool.mu.RLock()
 	defer txPool.mu.RUnlock()
-	
+
 	return len(txPool.transacitons)
+}
+
+func (txPool *DefaultTransactionPool) GetTransaction(hash types.Hash) (*Transaction, error) {
+	transaction, ok := txPool.transacitons[hash]
+	if !ok {
+		return nil, fmt.Errorf("transaction with hash (%s) does not exist in the pool", hash.String())
+	}
+	return transaction, nil
+}
+
+func (txPool *DefaultTransactionPool) HasTransaction(hash types.Hash) bool {
+	_, ok := txPool.transacitons[hash]
+	return ok
 }

@@ -3,6 +3,7 @@ package util
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"io"
 )
 
@@ -17,9 +18,16 @@ type Decoder interface {
 func ToEncoderSlice[T Encoder](items []T) []Encoder {
 	result := make([]Encoder, len(items))
 	for i, v := range items {
-			result[i] = v
+		result[i] = v
 	}
 	return result
+}
+func EncodeToBytes(item Encoder) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	if err := item.Encode(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func EncodeSlice(w io.Writer, items []Encoder) error {
@@ -46,15 +54,16 @@ func EncodeSliceToBytes(items []Encoder) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func DecodeSlice[T Decoder](r io.Reader) ([]T, error) {
+func DecodeSlice[T Decoder](r io.Reader, factory func() T) ([]T, error) {
 	var length int
 	if err := gob.NewDecoder(r).Decode(&length); err != nil {
 		return nil, err
 	}
+	fmt.Println(length)
 
 	items := make([]T, 0, length)
 	for i := 0; i < length; i++ {
-		var item T
+		item := factory()
 		if err := item.Decode(r); err != nil {
 			return nil, err
 		}

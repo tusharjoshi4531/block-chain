@@ -71,7 +71,7 @@ func TestSuccessiveEncoding(t *testing.T) {
 
 	ntx := NewTransaction([]byte{})
 	assert.Nil(t, gob.NewDecoder(buf).Decode(&ntx.Data))
-	pk := &crypto.SerializedPublicKey{}
+	pk := &crypto.SerializablePublicKey{}
 	assert.Nil(t, gob.NewDecoder(buf).Decode(pk))
 	ntx.From = crypto.DecodePublicKey(pk)
 
@@ -95,7 +95,6 @@ func TestTransactionEncodeDecode(t *testing.T) {
 	assert.Equal(t, txDecoded, tx)
 }
 
-
 func newSignedTransaction(t *testing.T, data []byte) *Transaction {
 	tx := NewTransaction(data)
 	privateKey := crypto.GeneratePrivateKey()
@@ -105,4 +104,3 @@ func newSignedTransaction(t *testing.T, data []byte) *Transaction {
 
 	return tx
 }
-

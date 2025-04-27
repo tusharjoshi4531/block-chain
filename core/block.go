@@ -11,6 +11,7 @@ import (
 
 	"github.com/tusharjoshi4531/block-chain.git/crypto"
 	"github.com/tusharjoshi4531/block-chain.git/types"
+	"github.com/tusharjoshi4531/block-chain.git/util"
 )
 
 type BlockHeader struct {
@@ -198,11 +199,7 @@ func (block *Block) Encode(w io.Writer) error {
 }
 
 func (block *Block) Bytes() ([]byte, error) {
-	buf := &bytes.Buffer{}
-	if err := block.Encode(buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return util.EncodeToBytes(block)
 }
 
 func (block *Block) Decode(r io.Reader) error {
@@ -214,7 +211,7 @@ func (block *Block) Decode(r io.Reader) error {
 		return err
 	}
 
-	serializedValidator := &crypto.SerializedPublicKey{}
+	serializedValidator := &crypto.SerializablePublicKey{}
 	if err := serializedValidator.Decode(r); err != nil {
 		return err
 	}

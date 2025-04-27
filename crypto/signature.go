@@ -25,27 +25,27 @@ func (s *Signature) Decode(r io.Reader) error {
 	return gob.NewDecoder(r).Decode(s)
 }
 
-type SerializedPublicKey struct {
+type SerializablePublicKey struct {
 	// TODO: Support for other curves
 	X, Y *big.Int
 }
 
-func (key *SerializedPublicKey) Encode(w io.Writer) error {
+func (key *SerializablePublicKey) Encode(w io.Writer) error {
 	return gob.NewEncoder(w).Encode(key)
 }
 
-func (key *SerializedPublicKey) Decode(r io.Reader) error {
+func (key *SerializablePublicKey) Decode(r io.Reader) error {
 	return gob.NewDecoder(r).Decode(key)
 }
 
-func SerializePublicKey(publicKey *ecdsa.PublicKey) *SerializedPublicKey {
-	return &SerializedPublicKey{
+func SerializePublicKey(publicKey *ecdsa.PublicKey) *SerializablePublicKey {
+	return &SerializablePublicKey{
 		X: publicKey.X,
 		Y: publicKey.Y,
 	}
 }
 
-func DecodePublicKey(serializedKey *SerializedPublicKey) *ecdsa.PublicKey {
+func DecodePublicKey(serializedKey *SerializablePublicKey) *ecdsa.PublicKey {
 	return &ecdsa.PublicKey{
 		Curve: elliptic.P256(),
 		X:     serializedKey.X,

@@ -12,7 +12,7 @@ import (
 type BlockChainTransport interface {
 	SendTransaction(string, *core.Transaction) error
 	BroadcastTransaction(*core.Transaction) error
-	SendNewBlocks(to string) error
+	SyncBlockChain(to string) error
 	ReceiveMessage(*BCPayload) error
 }
 
@@ -58,8 +58,25 @@ func (tr *LocalBlockChainTransport) BroadcastTransaction(transaction *core.Trans
 	return tr.LocalTransport.BroadCastMessage(msg)
 }
 
-func (tr *LocalBlockChainTransport) SendNewBlocks(to string) error {
-	payload, err := NewBCHashChain(tr.blockChain)
+func (tr *LocalBlockChainTransport) SyncBlockChain(tp string) error {
+	return nil
+}
+
+func (tr *LocalBlockChainTransport) SendBlockChainHash(to string) error {
+	payload, err := NewBCHashChain(core.NewHashChain(tr.blockChain))
+	if err != nil {
+		return err
+	}
+	payloadBytes, err := payload.Bytes()
+	if err != nil {
+		return err
+	}
+	msg := network.NewMessage(tr.Address(), payloadBytes)
+	return tr.LocalTransport.SendMessage(to, msg)
+}
+
+func (tr *LocalBlockChainTransport) SendBlocks(to string, blocks []*core.Block) error {
+	payload, err := NewBCBlocks(blocks)
 	if err != nil {
 		return err
 	}

@@ -20,11 +20,11 @@ func NewLocalTransport(address string) *LocalTransport {
 	}
 }
 
-func (t *LocalTransport) Receive() <-chan Message {
+func (t *LocalTransport) ReadChan() <-chan Message {
 	return t.messageChanel
 }
 
-func (t *LocalTransport) Chan() chan<- Message {
+func (t *LocalTransport) WriteChan() chan<- Message {
 	return t.messageChanel
 }
 
@@ -46,7 +46,7 @@ func (t *LocalTransport) SendMessage(to string, msg *Message) error {
 		return fmt.Errorf("sender (%s) is not connected to receiver (%s)", t.Address(), to)
 	}
 
-	peer.Chan() <- *msg
+	peer.WriteChan() <- *msg
 	return nil
 }
 

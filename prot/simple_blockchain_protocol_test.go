@@ -123,6 +123,6 @@ func createSimpleParticipant(address string, txPool core.TransactionPool, bc cor
 	privKey := crypto.GeneratePrivateKey()
 	miner := NewSimpleMiner(bc, txPool, privKey)
 	validator := NewSimpleValidator(bc, privKey)
-	consumer := NewSimpleConsumer(bc, transport)
+	consumer := NewSimpleConsumer(bc, txPool, transport)
 	return consumer, validator, miner, privKey
 }

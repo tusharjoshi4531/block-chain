@@ -35,7 +35,7 @@ func TestSendMessage(t *testing.T) {
 	}
 
 	assert.Nil(t, ta.SendMessage("B", &msg))
-	msgrv := <-tb.Receive()
+	msgrv := <-tb.ReadChan()
 
 	assert.Equal(t, msgrv, msg)
 }
@@ -63,7 +63,7 @@ func TestBroadcastMessage(t *testing.T) {
 		assert.Nil(t, ts[0].BroadCastMessage(msg))
 
 		for j := 1; j < 4; j++ {
-			msgrv := <-ts[j].Receive()
+			msgrv := <-ts[j].ReadChan()
 			assert.Equal(t, &msgrv, msg)
 		}
 	}

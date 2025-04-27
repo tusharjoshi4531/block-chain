@@ -52,7 +52,7 @@ func TestLocalPeer(t *testing.T) {
 	for _, transaction := range ta.transactionPool.Transactions() {
 		ta.SendTransaction(tb.Address(), transaction)
 
-		recMsg := <-tb.Receive()
+		recMsg := <-tb.ReadChan()
 		recPayload := &BCPayload{}
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
@@ -67,7 +67,7 @@ func TestLocalPeer(t *testing.T) {
 	for _, transaction := range tb.transactionPool.Transactions() {
 		tb.SendTransaction(ta.Address(), transaction)
 
-		recMsg := <-ta.Receive()
+		recMsg := <-ta.ReadChan()
 		recPayload := &BCPayload{}
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
@@ -124,7 +124,7 @@ func TestLocalPeerWithReceive(t *testing.T) {
 	}
 
 	for i := 0; i < numTxA; i++ {
-		recMsg := <-tb.Receive()
+		recMsg := <-tb.ReadChan()
 		recPayload := &BCPayload{}
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
@@ -134,7 +134,7 @@ func TestLocalPeerWithReceive(t *testing.T) {
 	}
 
 	for i := 0; i < numTxB; i++ {
-		recMsg := <-ta.Receive()
+		recMsg := <-ta.ReadChan()
 		recPayload := &BCPayload{}
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
@@ -184,7 +184,7 @@ func TestLocalNetwork(t *testing.T) {
 	for _, tx := range ts[0].transactionPool.Transactions() {
 		assert.Nil(t, ts[0].BroadcastTransaction(tx))
 		for j := 1; j < connSize; j++ {
-			recMsg := <-ts[j].Receive()
+			recMsg := <-ts[j].ReadChan()
 			recPayload := &BCPayload{}
 			recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
@@ -242,7 +242,7 @@ func TestConcurrentLocalNetworl(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			for j := 0; j < numTx*(numNodes-1); j++ {
-				recMsg := <-transports[i].Receive()
+				recMsg := <-transports[i].ReadChan()
 				recPayload := &BCPayload{}
 				recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
@@ -277,14 +277,154 @@ func TestSendHashChain(t *testing.T) {
 	ta, pka := createLocalBlockchainTransport("A")
 	tb, pkb := createLocalBlockchainTransport("B")
 
-	ta.Connect(tb)
-	tb.Connect(ta)
+	assert.Nil(t, ta.Connect(tb))
+	assert.Nil(t, tb.Connect(ta))
 
 	ta.blockChain = createDummyBlockcahin(t, 100, 5, pka)
 	tb.blockChain = createDummyBlockcahin(t, 100, 5, pkb)
 
 	assert.Equal(t, int(ta.blockChain.Height()), 20)
 	assert.Equal(t, int(tb.blockChain.Height()), 20)
+
+	for i := 0; i < 2; i++ {
+		var tr, otr *LocalBlockChainTransport
+		// var pk, tpk *ecdsa.PrivateKey
+
+		if i == 0 {
+			tr, otr = ta, tb
+		} else {
+			tr, otr = tb, ta
+		}
+
+		// Send blocks
+		assert.Nil(t, tr.SendBlockChainHash(otr.Address()))
+
+		recMsg := <-otr.ReadChan()
+
+		recPayload := &BCPayload{}
+		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
+		assert.Equal(t, recPayload.MsgType, MessageHashChain)
+
+		// Rec
+		chain := &core.HashChain{}
+		chain.Decode(bytes.NewBuffer(recPayload.Payload))
+
+		extraBlocks := chain.GetExcludedBlockHashes(tr.blockChain)
+		assert.Equal(t, len(extraBlocks), 0)
+	}
+}
+
+func TestSendHashChainIncorrect(t *testing.T) {
+	ta, pka := createLocalBlockchainTransport("A")
+	tb, pkb := createLocalBlockchainTransport("B")
+
+	assert.Nil(t, ta.Connect(tb))
+	assert.Nil(t, tb.Connect(ta))
+
+	bc := createDummyBlockcahin(t, 100, 5, pka)
+	ta.blockChain = bc
+	tb.blockChain = bc.Copy()
+
+	hshA, err := ta.blockChain.GetGenesis().Hash()
+	assert.Nil(t, err)
+	hshB, err := tb.blockChain.GetGenesis().Hash()
+	assert.Nil(t, err)
+	assert.Equal(t, hshA, hshB)
+
+	assert.Equal(t, int(ta.blockChain.Height()), 20)
+	assert.Equal(t, int(tb.blockChain.Height()), 20)
+
+	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), 21)
+	assert.Equal(t, len(tb.blockChain.GetBlockHashes()), 21)
+
+	txx := []*core.Transaction{
+		core.NewTransaction([]byte("NewA")),
+	}
+	assert.Nil(t, txx[0].Sign(pka))
+	extendBlockChain(t, ta.blockChain, txx, pka)
+
+	txx = []*core.Transaction{
+		core.NewTransaction([]byte("NewB")),
+	}
+	assert.Nil(t, txx[0].Sign(pkb))
+	extendBlockChain(t, tb.blockChain, txx, pkb)
+
+	assert.Equal(t, int(ta.blockChain.Height()), 21)
+	assert.Equal(t, int(tb.blockChain.Height()), 21)
+
+	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), 22)
+	assert.Equal(t, len(tb.blockChain.GetBlockHashes()), 22)
+
+	for i := 0; i < 2; i++ {
+		var tr, otr *LocalBlockChainTransport
+		// var pk, tpk *ecdsa.PrivateKey
+
+		if i == 0 {
+			fmt.Println("A")
+			tr, otr = ta, tb
+		} else {
+			fmt.Println("B")
+			tr, otr = tb, ta
+		}
+
+		// Send blocks
+		assert.Nil(t, tr.SendBlockChainHash(otr.Address()))
+
+		recMsg := <-otr.ReadChan()
+
+		recPayload := &BCPayload{}
+		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
+		assert.Equal(t, recPayload.MsgType, MessageHashChain)
+
+		// Rec
+		chain := &core.HashChain{}
+		chain.Decode(bytes.NewBuffer(recPayload.Payload))
+
+		assert.Equal(t, len(chain.GetBlockHashes()), len(otr.blockChain.GetBlockHashes()))
+		assert.Equal(t, len(chain.GetBlockHashes()), len(tr.blockChain.GetBlockHashes()))
+
+		extraBlocks := chain.GetExcludedBlockHashes(otr.blockChain)
+		assert.Equal(t, len(extraBlocks), 1)
+	}
+}
+
+func TestBlockchainSyncManual(t *testing.T) {
+	numTx := 100
+	blockSz := 5
+	numBlocks := numTx / blockSz
+	numDivergeTx := 10
+	numDivergeBlocks := numDivergeTx / blockSz
+
+	ta, pka := createLocalBlockchainTransport("A")
+	tb, pkb := createLocalBlockchainTransport("B")
+
+	assert.Nil(t, ta.Connect(tb))
+	assert.Nil(t, tb.Connect(ta))
+
+	bc := createDummyBlockcahin(t, numTx, blockSz, pka)
+	ta.blockChain = bc
+	tb.blockChain = bc.Copy()
+
+	hshA, err := ta.blockChain.GetGenesis().Hash()
+	assert.Nil(t, err)
+	hshB, err := tb.blockChain.GetGenesis().Hash()
+	assert.Nil(t, err)
+	assert.Equal(t, hshA, hshB)
+
+	assert.Equal(t, int(ta.blockChain.Height()), numBlocks)
+	assert.Equal(t, int(tb.blockChain.Height()), numBlocks)
+
+	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), numBlocks+1)
+	assert.Equal(t, len(tb.blockChain.GetBlockHashes()), numBlocks+1)
+
+	extendBlockChainAuto(t, ta.blockChain, "TA_", numDivergeTx, blockSz, pka)
+	extendBlockChainAuto(t, tb.blockChain, "TB_", numDivergeTx, blockSz, pkb)
+
+	assert.Equal(t, int(ta.blockChain.Height()), numBlocks+numDivergeBlocks)
+	assert.Equal(t, int(tb.blockChain.Height()), numBlocks+numDivergeBlocks)
+
+	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), numBlocks+numDivergeBlocks+1)
+	assert.Equal(t, len(tb.blockChain.GetBlockHashes()), numBlocks+numDivergeBlocks+1)
 }
 
 func createLocalBlockchainTransport(address string) (*LocalBlockChainTransport, *ecdsa.PrivateKey) {
@@ -329,8 +469,52 @@ func createDummyBlockcahin(t *testing.T, numTx, blockSz int, privKey *ecdsa.Priv
 			assert.Nil(t, err)
 
 			currBlock = core.NewBlockWithHeaderInfo(currBlock.Header.Height+1, prevHash)
-			j = 0;
+			j = 0
 		}
 	}
 	return bc
+}
+
+func extendBlockChain(t *testing.T, bc core.BlockChain, txx []*core.Transaction, privKey *ecdsa.PrivateKey) {
+	height := bc.Height()
+	prevHash, err := bc.GetHeighestBlock().Header.Hash()
+	assert.Nil(t, err)
+
+	block := core.NewBlockWithHeaderInfo(height+1, prevHash)
+	for _, tx := range txx {
+		block.AddTransaction(tx)
+	}
+	block.Sign(privKey)
+	bc.AddBlock(block)
+}
+
+func extendBlockChainAuto(t *testing.T, bc core.BlockChain, pref string, numTx, blockSz int, privKey *ecdsa.PrivateKey) {
+	block := bc.GetHeighestBlock()
+	prevHash, err := block.Hash()
+	assert.Nil(t, err)
+	currBlock := core.NewBlockWithHeaderInfo(block.Header.Height+1, prevHash)
+
+	j := 0
+	for i := 0; i < numTx; i++ {
+		tx := core.NewTransaction([]byte(fmt.Sprintf("%s%d", pref, i)))
+		currBlock.AddTransaction(tx)
+		j++
+
+		if j == blockSz {
+			assert.Nil(t, currBlock.Sign(privKey))
+			assert.Nil(t, bc.AddBlock(currBlock))
+			prevHash, err := currBlock.Hash()
+			assert.Nil(t, err)
+
+			currBlock = core.NewBlockWithHeaderInfo(currBlock.Header.Height+1, prevHash)
+			j = 0
+		}
+	}
+	if j != 0 {
+		assert.Nil(t, currBlock.Sign(privKey))
+		assert.Nil(t, bc.AddBlock(currBlock))
+		_, err := currBlock.Hash()
+		assert.Nil(t, err)
+
+	}
 }

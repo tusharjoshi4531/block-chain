@@ -14,8 +14,8 @@ func NewMessage(from string, payload []byte) *Message {
 }
 
 type Transport interface {
-	Receive() <-chan Message
-	Chan() chan<- Message
+	ReadChan() <-chan Message
+	WriteChan() chan<- Message
 	Connect(Transport) error
 	SendMessage(string, *Message) error
 	BroadCastMessage(*Message) error

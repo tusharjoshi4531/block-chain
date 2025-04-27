@@ -7,11 +7,13 @@ import (
 	"io"
 
 	"github.com/tusharjoshi4531/block-chain.git/core"
+	"github.com/tusharjoshi4531/block-chain.git/util"
 )
 
 const (
 	MessageTransaction int = iota
 	MessageHashChain
+	MessageBlocks
 	// MessageTXSync
 )
 
@@ -32,19 +34,28 @@ func NewBCTransactionPayload(tx *core.Transaction) (*BCPayload, error) {
 	}, nil
 }
 
-func NewBCHashChain(blockChain core.BlockChain) (*BCPayload, error) {
-	hashChain := blockChain.GetHashChain()
-
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-
-	if err := enc.Encode(hashChain); err != nil {
+func NewBCHashChain(hashChain *core.HashChain) (*BCPayload, error) {
+	payload, err := hashChain.Bytes()
+	if err != nil {
 		return nil, err
 	}
 
 	return &BCPayload{
 		MsgType: MessageHashChain,
-		Payload: buf.Bytes(),
+		Payload: payload,
+	}, nil
+}
+
+func NewBCBlocks(blocks []*core.Block) (*BCPayload, error) {
+	encoderSlice := util.ToEncoderSlice(blocks)
+	payload, err := util.EncodeSliceToBytes(encoderSlice)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BCPayload{
+		MsgType: MessageBlocks,
+		Payload: payload,
 	}, nil
 }
 

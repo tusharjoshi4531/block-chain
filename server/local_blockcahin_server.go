@@ -58,7 +58,7 @@ func (server *LocalBlockChainServer) Listen() {
 			}
 			server.mu.RUnlock()
 
-			recMsg := <-server.Receive()
+			recMsg := <-server.ReadChan()
 			recPayload := &bcnetwork.BCPayload{}
 			err := recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 

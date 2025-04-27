@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+
 	"github.com/tusharjoshi4531/block-chain.git/types"
 )
 
@@ -15,7 +16,7 @@ type BlockChain interface {
 	GetTransactionsInChain(blockHash types.Hash) ([]*Transaction, error)
 	Height() uint32
 
-	GetHashChain() []types.Hash
+	GetBlockHashes() []types.Hash
 }
 
 type DefaultBlockChain struct {
@@ -65,7 +66,7 @@ func (blockChain *DefaultBlockChain) AddBlock(block *Block) error {
 	}
 
 	if prevBlock.Header.Height != block.Header.Height-1 {
-		return fmt.Errorf("block (%s) has incorrect size; Required = (%d); Founc = (%d)", blockHash, prevHeight+1, blockHeight)
+		return fmt.Errorf("block (%s) has incorrect height; Required = (%d); Founc = (%d)", blockHash.String(), prevHeight+1, blockHeight)
 	}
 
 	blockChain.addBlockWithoutValidation(blockHash, block)
@@ -155,10 +156,33 @@ func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.H
 	}
 }
 
-func (blockChain *DefaultBlockChain) GetHashChain() []types.Hash {
-	chain := make([]types.Hash, len(blockChain.blocks))
+func (blockChain *DefaultBlockChain) GetBlockHashes() []types.Hash {
+	chain := make([]types.Hash, 0, len(blockChain.blocks))
 	for hash := range blockChain.blocks {
+		// fmt.Printf("HSH: %s, \nBLCK: %v\n\n", hash.String(), block)
 		chain = append(chain, hash)
 	}
+	// fmt.Println("SZ: ", len(chain))
 	return chain
+}
+
+func (blockChain *DefaultBlockChain) Copy() *DefaultBlockChain {
+	newBlocks := make(map[types.Hash]*Block)
+	for k, v := range blockChain.blocks {
+		newBlocks[k] = v
+	}
+
+	newBlocksAtHeight := make(map[uint32][]*Block)
+	for k, vs := range blockChain.blocksAtHeight {
+		for _, v := range vs {
+			newBlocksAtHeight[k] = append(newBlocksAtHeight[k], v)
+		}
+	}
+	return &DefaultBlockChain{
+		height:         blockChain.height,
+		blocks:         newBlocks,
+		blocksAtHeight: newBlocksAtHeight,
+		genesis:        blockChain.genesis,
+		heighestBlock:  blockChain.heighestBlock,
+	}
 }

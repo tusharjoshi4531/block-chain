@@ -3,10 +3,12 @@ package bcnetwork
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/tusharjoshi4531/block-chain.git/core"
 	"github.com/tusharjoshi4531/block-chain.git/network"
+	"github.com/tusharjoshi4531/block-chain.git/util"
 )
 
 type BlockChainTransport interface {
@@ -91,24 +93,54 @@ func (tr *LocalBlockChainTransport) SendBlocks(to string, blocks []*core.Block) 
 func (tr *LocalBlockChainTransport) ReceiveMessage(payload *BCPayload) error {
 	switch payload.MsgType {
 	case MessageTransaction:
-		transaction, err := tr.decodeTransaction(payload)
+		transaction, err := tr.decodeTransaction(payload.Payload)
 		if err != nil {
 			return err
 		}
 
-		return tr.receiveTransaction(transaction)
+		return tr.addTransaction(transaction)
+	case MessageBlocks:
+		blocks, err := tr.decodeBlocks(payload.Payload)
+		if err != nil {
+			return err
+		}
+
+		return tr.addBlocks(blocks)
 	default:
 		return fmt.Errorf("incorrect message type (%d)", payload.MsgType)
 	}
 }
 
-func (tr *LocalBlockChainTransport) decodeTransaction(payload *BCPayload) (*core.Transaction, error) {
+func (tr *LocalBlockChainTransport) decodeTransaction(payload []byte) (*core.Transaction, error) {
 	transaction := core.NewTransaction([]byte{})
-	err := transaction.Decode(bytes.NewBuffer(payload.Payload))
+	err := transaction.Decode(bytes.NewBuffer(payload))
 	return transaction, err
 }
 
-func (tr *LocalBlockChainTransport) receiveTransaction(transaction *core.Transaction) error {
+func (tr *LocalBlockChainTransport) decodeBlocks(payload []byte) ([]*core.SerializableBlock, error) {
+	return util.DecodeSlice(bytes.NewBuffer(payload), func() *core.SerializableBlock {
+		return &core.SerializableBlock{}
+	})
+}
+
+func (tr *LocalBlockChainTransport) addTransaction(transaction *core.Transaction) error {
 	transaction.SetFirstSeen(time.Now().UnixNano())
 	return tr.transactionPool.AddTransaction(transaction)
+}
+
+func (tr *LocalBlockChainTransport) addBlocks(blocks []*core.SerializableBlock) error {
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].Header.Height < blocks[j].Header.Height
+	})
+	
+	for _, encodedBlock := range blocks {
+		block, err := encodedBlock.Reconstruct(tr.transactionPool)
+		if err != nil {
+			return err
+		}
+		if err := tr.blockChain.AddBlock(block); err != nil {
+			return err
+		}
+	}
+	return nil
 }

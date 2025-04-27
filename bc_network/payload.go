@@ -3,8 +3,8 @@ package bcnetwork
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"io"
+	"sort"
 
 	"github.com/tusharjoshi4531/block-chain.git/core"
 	"github.com/tusharjoshi4531/block-chain.git/util"
@@ -47,7 +47,16 @@ func NewBCHashChain(hashChain *core.HashChain) (*BCPayload, error) {
 }
 
 func NewBCBlocks(blocks []*core.Block) (*BCPayload, error) {
-	encoderSlice := util.ToEncoderSlice(blocks)
+	encodedBlocks := make([]*core.SerializableBlock, 0, len(blocks))
+	for _, block := range blocks {
+		encodedBlocks = append(encodedBlocks, core.NewSerializableBlock(block))
+	}
+
+	sort.Slice(encodedBlocks, func(i, j int) bool {
+		return encodedBlocks[i].Header.Height < encodedBlocks[j].Header.Height
+	})
+
+	encoderSlice := util.ToEncoderSlice(encodedBlocks)
 	payload, err := util.EncodeSliceToBytes(encoderSlice)
 	if err != nil {
 		return nil, err
@@ -57,19 +66,6 @@ func NewBCBlocks(blocks []*core.Block) (*BCPayload, error) {
 		MsgType: MessageBlocks,
 		Payload: payload,
 	}, nil
-}
-
-func DecodeTransactionMessage(message *BCPayload) (*core.Transaction, error) {
-	if message.MsgType != MessageTransaction {
-		return nil, fmt.Errorf("invalid message type: Expected (%d) - Found(%d)", MessageTransaction, message.MsgType)
-	}
-
-	transaction := core.NewTransaction([]byte{})
-	if err := transaction.Decode(bytes.NewBuffer(message.Payload)); err != nil {
-		return nil, err
-	}
-
-	return transaction, nil
 }
 
 func (payload *BCPayload) Encode(w io.Writer) error {

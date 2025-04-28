@@ -130,7 +130,7 @@ func TestLocalPeerWithReceive(t *testing.T) {
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
 		assert.Equal(t, recPayload.MsgType, MessageTransaction)
-		err := tb.ReceiveMessage(recPayload)
+		err := tb.ReceiveMessage(recPayload, ta.Address())
 		assert.Nil(t, err)
 	}
 
@@ -140,7 +140,7 @@ func TestLocalPeerWithReceive(t *testing.T) {
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
 		assert.Equal(t, recPayload.MsgType, MessageTransaction)
-		err := ta.ReceiveMessage(recPayload)
+		err := ta.ReceiveMessage(recPayload, tb.Address())
 		assert.Nil(t, err)
 	}
 
@@ -248,7 +248,7 @@ func TestConcurrentLocalNetworl(t *testing.T) {
 				recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
 				assert.Equal(t, recPayload.MsgType, MessageTransaction)
-				assert.Nil(t, transports[i].ReceiveMessage(recPayload))
+				assert.Nil(t, transports[i].ReceiveMessage(recPayload, ""))
 			}
 		}(i)
 	}
@@ -298,7 +298,7 @@ func TestSendHashChain(t *testing.T) {
 		}
 
 		// Send blocks
-		assert.Nil(t, tr.SendBlockChainHash(otr.Address()))
+		assert.Nil(t, tr.SendHashChain(otr.Address()))
 
 		recMsg := <-otr.ReadChan()
 
@@ -369,7 +369,7 @@ func TestSendHashChainIncorrect(t *testing.T) {
 		}
 
 		// Send blocks
-		assert.Nil(t, tr.SendBlockChainHash(otr.Address()))
+		assert.Nil(t, tr.SendHashChain(otr.Address()))
 
 		recMsg := <-otr.ReadChan()
 
@@ -452,7 +452,7 @@ func TestBlockchainSyncManual(t *testing.T) {
 		}
 
 		// Send block hash
-		assert.Nil(t, tr.SendBlockChainHash(otr.Address()))
+		assert.Nil(t, tr.SendHashChain(otr.Address()))
 
 		recMsg := <-otr.ReadChan()
 
@@ -467,17 +467,9 @@ func TestBlockchainSyncManual(t *testing.T) {
 		// assert.Equal(t, len(chain.GetBlockHashes()), len(otr.blockChain.GetBlockHashes()))
 		// assert.Equal(t, len(chain.GetBlockHashes()), len(tr.blockChain.GetBlockHashes()))
 
-		extraBlocks := chain.GetExcludedBlockHashes(otr.blockChain)
-		assert.Equal(t, len(extraBlocks), numDivergeBlocks)
+		blocks := chain.GetExcludedBlocks(otr.blockChain)
 
-		// Send blocks
-		blocks := make([]*core.Block, 0, len(extraBlocks))
-		for _, hash := range extraBlocks {
-			block, err := otr.blockChain.GetBlockWithHash(hash)
-			assert.Nil(t, err)
-			blocks = append(blocks, block)
-		}
-
+		assert.Equal(t, len(blocks), numDivergeBlocks)
 		assert.Nil(t, otr.SendBlocks(tr.Address(), blocks))
 
 		// Rec blocks
@@ -495,7 +487,7 @@ func TestBlockchainSyncManual(t *testing.T) {
 		bl := &core.SerializableBlock{}
 		assert.Nil(t, bl.Decode(buf))
 
-		assert.Nil(t, tr.ReceiveMessage(recPayload))
+		assert.Nil(t, tr.ReceiveMessage(recPayload, otr.Address()))
 	}
 
 	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), len(tb.blockChain.GetBlockHashes()))

@@ -15,7 +15,10 @@ type BlockChainTransport interface {
 	SendTransaction(string, *core.Transaction) error
 	BroadcastTransaction(*core.Transaction) error
 	SyncBlockChain(to string) error
-	ReceiveMessage(*BCPayload) error
+	SendHashChain(to string) error
+	SendBlocks(to string, blocks []*core.Block) error
+	SendBlocksWithHashChain(to string, blocks []*core.Block) error
+	ReceiveMessage(*BCPayload, string) error
 }
 
 type LocalBlockChainTransport struct {
@@ -64,7 +67,7 @@ func (tr *LocalBlockChainTransport) SyncBlockChain(tp string) error {
 	return nil
 }
 
-func (tr *LocalBlockChainTransport) SendBlockChainHash(to string) error {
+func (tr *LocalBlockChainTransport) SendHashChain(to string) error {
 	payload, err := NewBCHashChain(core.NewHashChain(tr.blockChain))
 	if err != nil {
 		return err
@@ -90,37 +93,108 @@ func (tr *LocalBlockChainTransport) SendBlocks(to string, blocks []*core.Block) 
 	return tr.LocalTransport.SendMessage(to, msg)
 }
 
-func (tr *LocalBlockChainTransport) ReceiveMessage(payload *BCPayload) error {
+func (tr *LocalBlockChainTransport) SendBlocksWithHashChain(to string, blocks []*core.Block) error {
+	payload, err := NewBCBlocksWithHashChain(blocks, core.NewHashChain(tr.blockChain))
+	if err != nil {
+		return err
+	}
+	payloadBytes, err := payload.Bytes()
+	if err != nil {
+		return err
+	}
+	msg := network.NewMessage(tr.Address(), payloadBytes)
+	return tr.LocalTransport.SendMessage(to, msg)
+}
+
+func (tr *LocalBlockChainTransport) ReceiveMessage(payload *BCPayload, from string) error {
 	switch payload.MsgType {
 	case MessageTransaction:
-		transaction, err := tr.decodeTransaction(payload.Payload)
-		if err != nil {
-			return err
-		}
-
-		return tr.addTransaction(transaction)
+		return tr.handleTransactionMessage(payload.Payload)
 	case MessageBlocks:
-		blocks, err := tr.decodeBlocks(payload.Payload)
-		if err != nil {
-			return err
-		}
-
-		return tr.addBlocks(blocks)
+		return tr.handleBlocksMessage(payload.Payload)
+	case MessageHashChain:
+		return tr.handleHashChainMessage(payload.Payload, from)
+	case MessageBlocksWithHashChain:
+		return tr.handleBlocksWithHashChainMessage(payload.Payload, from)
 	default:
 		return fmt.Errorf("incorrect message type (%d)", payload.MsgType)
 	}
 }
 
-func (tr *LocalBlockChainTransport) decodeTransaction(payload []byte) (*core.Transaction, error) {
+func (tr *LocalBlockChainTransport) handleTransactionMessage(payload []byte) error {
+	transaction, err := tr.decodeTransactionFromBytes(payload)
+	if err != nil {
+		return err
+	}
+
+	return tr.addTransaction(transaction)
+}
+
+func (tr *LocalBlockChainTransport) handleBlocksMessage(payload []byte) error {
+	blocks, err := tr.decodeBlocksFromBytes(payload)
+	if err != nil {
+		return err
+	}
+
+	return tr.addBlocks(blocks)
+}
+
+func (tr *LocalBlockChainTransport) handleHashChainMessage(payload []byte, from string) error {
+	hashChain, err := tr.decodeHashChainFromBytes(payload)
+	if err != nil {
+		return err
+	}
+
+	extraBlocks := hashChain.GetExcludedBlocks(tr.blockChain)
+	tr.SendBlocksWithHashChain(from, extraBlocks)
+	return nil
+}
+
+func (tr *LocalBlockChainTransport) handleBlocksWithHashChainMessage(payload []byte, from string) error {
+	blocks, hashChain, err := tr.decodeBlocksAndHashchainFromBytes(payload)
+	if err != nil {
+		return err
+	}
+
+	if err := tr.addBlocks(blocks); err != nil {
+		return err
+	}
+
+	extraBlocks := hashChain.GetExcludedBlocks(tr.blockChain)
+	return tr.SendBlocks(from, extraBlocks)
+}
+
+func (tr *LocalBlockChainTransport) decodeTransactionFromBytes(payload []byte) (*core.Transaction, error) {
 	transaction := core.NewTransaction([]byte{})
 	err := transaction.Decode(bytes.NewBuffer(payload))
 	return transaction, err
 }
 
-func (tr *LocalBlockChainTransport) decodeBlocks(payload []byte) ([]*core.SerializableBlock, error) {
+func (tr *LocalBlockChainTransport) decodeBlocksFromBytes(payload []byte) ([]*core.SerializableBlock, error) {
 	return util.DecodeSlice(bytes.NewBuffer(payload), func() *core.SerializableBlock {
 		return &core.SerializableBlock{}
 	})
+}
+
+func (tr *LocalBlockChainTransport) decodeHashChainFromBytes(payload []byte) (*core.HashChain, error) {
+	hashChain := &core.HashChain{}
+	err := hashChain.Decode(bytes.NewBuffer(payload))
+	return hashChain, err
+}
+
+func (tr *LocalBlockChainTransport) decodeBlocksAndHashchainFromBytes(payload []byte) ([]*core.SerializableBlock, *core.HashChain, error) {
+	buf := bytes.NewBuffer(payload)
+	blocks, err := util.DecodeSlice(buf, func() *core.SerializableBlock {
+		return &core.SerializableBlock{}
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	hashChain := &core.HashChain{}
+	if err := hashChain.Decode(buf); err != nil {
+		return nil, nil, err
+	}
+	return blocks, hashChain, err
 }
 
 func (tr *LocalBlockChainTransport) addTransaction(transaction *core.Transaction) error {
@@ -132,7 +206,7 @@ func (tr *LocalBlockChainTransport) addBlocks(blocks []*core.SerializableBlock) 
 	sort.Slice(blocks, func(i, j int) bool {
 		return blocks[i].Header.Height < blocks[j].Header.Height
 	})
-	
+
 	for _, encodedBlock := range blocks {
 		block, err := encodedBlock.Reconstruct(tr.transactionPool)
 		if err != nil {

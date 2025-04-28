@@ -14,6 +14,7 @@ const (
 	MessageTransaction int = iota
 	MessageHashChain
 	MessageBlocks
+	MessageBlocksWithHashChain
 	// MessageTXSync
 )
 
@@ -47,23 +48,25 @@ func NewBCHashChain(hashChain *core.HashChain) (*BCPayload, error) {
 }
 
 func NewBCBlocks(blocks []*core.Block) (*BCPayload, error) {
-	encodedBlocks := make([]*core.SerializableBlock, 0, len(blocks))
-	for _, block := range blocks {
-		encodedBlocks = append(encodedBlocks, core.NewSerializableBlock(block))
-	}
-
-	sort.Slice(encodedBlocks, func(i, j int) bool {
-		return encodedBlocks[i].Header.Height < encodedBlocks[j].Header.Height
-	})
-
-	encoderSlice := util.ToEncoderSlice(encodedBlocks)
-	payload, err := util.EncodeSliceToBytes(encoderSlice)
+	payload, err := encodeBlocksToSerializableBytes(blocks)
 	if err != nil {
 		return nil, err
 	}
 
 	return &BCPayload{
 		MsgType: MessageBlocks,
+		Payload: payload,
+	}, nil
+}
+
+func NewBCBlocksWithHashChain(blocks []*core.Block, hashChain *core.HashChain) (*BCPayload, error) {
+	payload, err := encodeBlocksWithHashChainBytes(blocks, *hashChain)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BCPayload{
+		MsgType: MessageBlocksWithHashChain,
 		Payload: payload,
 	}, nil
 }
@@ -82,4 +85,41 @@ func (payload *BCPayload) Bytes() ([]byte, error) {
 
 func (payload *BCPayload) Decode(r io.Reader) error {
 	return gob.NewDecoder(r).Decode(payload)
+}
+
+func encodeBlocksToSerializable(w io.Writer, blocks []*core.Block) error {
+	encodedBlocks := make([]*core.SerializableBlock, 0, len(blocks))
+	for _, block := range blocks {
+		encodedBlocks = append(encodedBlocks, core.NewSerializableBlock(block))
+	}
+
+	sort.Slice(encodedBlocks, func(i, j int) bool {
+		return encodedBlocks[i].Header.Height < encodedBlocks[j].Header.Height
+	})
+
+	encoderSlice := util.ToEncoderSlice(encodedBlocks)
+	return util.EncodeSlice(w, encoderSlice)
+}
+
+func encodeBlocksWithHashChain(w io.Writer, blocks []*core.Block, hashChain core.HashChain) error {
+	buf := &bytes.Buffer{}
+	if err := encodeBlocksToSerializable(buf, blocks); err != nil {
+		return err
+	}
+	if err := hashChain.Encode(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func encodeBlocksToSerializableBytes(blocks []*core.Block) ([]byte, error) {
+	return util.EncodeToBytesUsingEncoder(func(w io.Writer) error {
+		return encodeBlocksToSerializable(w, blocks)
+	})
+}
+
+func encodeBlocksWithHashChainBytes(blocks []*core.Block, hashChain core.HashChain) ([]byte, error) {
+	return util.EncodeToBytesUsingEncoder(func(w io.Writer) error {
+		return encodeBlocksWithHashChain(w, blocks, hashChain)
+	})
 }

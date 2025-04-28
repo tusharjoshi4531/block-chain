@@ -22,12 +22,17 @@ func ToEncoderSlice[T Encoder](items []T) []Encoder {
 	}
 	return result
 }
-func EncodeToBytes(item Encoder) ([]byte, error) {
+
+func EncodeToBytesUsingEncoder(encode func(io.Writer) error) ([]byte, error) {
 	buf := &bytes.Buffer{}
-	if err := item.Encode(buf); err != nil {
+	if err := encode(buf); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func EncodeToBytes(item Encoder) ([]byte, error) {
+	return EncodeToBytesUsingEncoder(item.Encode)
 }
 
 func EncodeSlice(w io.Writer, items []Encoder) error {

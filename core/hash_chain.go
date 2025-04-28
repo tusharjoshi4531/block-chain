@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
-
 	"github.com/tusharjoshi4531/block-chain.git/types"
 )
 
@@ -55,6 +54,23 @@ func (hashChain *HashChain) GetExcludedBlockHashes(blockChain BlockChain) []type
 		}
 	}
 	return excludedBlockHashes
+}
+
+func (hahsChain *HashChain) GetExcludedBlocks(blockChain BlockChain) []*Block {
+	excludedBlocksHash := hahsChain.GetExcludedBlockHashes(blockChain)
+	excludedBlocks := make([]*Block, 0, len(excludedBlocksHash))
+
+	for _, hash := range excludedBlocksHash {
+		block, err := blockChain.GetBlockWithHash(hash)
+		
+		if err != nil {
+			panic("incorrect behavior while getting excluded blocks from hashchain")
+		}
+
+		excludedBlocks = append(excludedBlocks, block)
+	}
+
+	return excludedBlocks
 }
 
 func (hashChain *HashChain) GetBlockHashes() []types.Hash {

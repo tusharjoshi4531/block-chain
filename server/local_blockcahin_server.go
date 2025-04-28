@@ -67,7 +67,7 @@ func (server *LocalBlockChainServer) Listen() {
 				continue
 			}
 
-			err = server.ReceiveMessage(recPayload)
+			err = server.ReceiveMessage(recPayload, recMsg.From)
 			if err != nil {
 				fmt.Println("Error: ", err.Error())
 			}

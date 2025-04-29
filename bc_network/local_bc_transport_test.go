@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tusharjoshi4531/block-chain.git/core"
 	"github.com/tusharjoshi4531/block-chain.git/crypto"
+	"github.com/tusharjoshi4531/block-chain.git/util"
 )
 
 func TestLocalPeer(t *testing.T) {
@@ -488,6 +489,142 @@ func TestBlockchainSyncManual(t *testing.T) {
 		assert.Nil(t, bl.Decode(buf))
 
 		assert.Nil(t, tr.ReceiveMessage(recPayload, otr.Address()))
+	}
+
+	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), len(tb.blockChain.GetBlockHashes()))
+	hashesA := ta.blockChain.GetBlockHashes()
+	hashesB := tb.blockChain.GetBlockHashes()
+	sort.Slice(hashesA, func(i, j int) bool {
+		return hashesA[i].String() < hashesA[j].String()
+	})
+	sort.Slice(hashesB, func(i, j int) bool {
+		return hashesB[i].String() < hashesB[j].String()
+	})
+	assert.Equal(t, hashesA, hashesB)
+}
+
+func TestEncodeBlocksWithHashChain(t *testing.T) {
+	blocks := []*core.Block{
+		core.NewBlock(),
+		core.NewBlock(),
+		core.NewBlock(),
+	}
+	encBlocks := make([]*core.SerializableBlock, 0, len(blocks))
+	for _, block := range blocks {
+		encBlocks = append(encBlocks, core.NewSerializableBlock(block))
+	}
+
+	bc := createDummyBlockcahin(t, 100, 3, crypto.GeneratePrivateKey())
+	hashChain := core.NewHashChain(bc)
+
+	data, err := encodeBlocksWithHashChainBytes(blocks, hashChain)
+	assert.Nil(t, err)
+
+	buf := bytes.NewBuffer(data)
+
+	_, err = util.DecodeSlice(buf, func() *core.SerializableBlock {
+		return &core.SerializableBlock{}
+	})
+	decHashChain := &core.HashChain{}
+	assert.Nil(t, decHashChain.Decode(buf))
+
+
+
+	assert.Nil(t, err)
+}
+
+func TestBlockChainSyncProt(t *testing.T) {
+	numTx := 100
+	blockSz := 5
+	numBlocks := numTx / blockSz
+	numDivergeTx := 10
+	numDivergeBlocks := numDivergeTx / blockSz
+
+	trs, privKeys := createNetworkWithSameBlocks(t, 2, numTx, blockSz)
+	ta, tb := trs[0], trs[1]
+	pka, pkb := privKeys[0], privKeys[1]
+
+	assert.Nil(t, ta.Connect(tb))
+	assert.Nil(t, tb.Connect(ta))
+
+	bc := createDummyBlockcahin(t, numTx, blockSz, pka)
+	ta.blockChain = bc
+	tb.blockChain = bc.Copy()
+
+	hshA, err := ta.blockChain.GetGenesis().Hash()
+	assert.Nil(t, err)
+	hshB, err := tb.blockChain.GetGenesis().Hash()
+	assert.Nil(t, err)
+	assert.Equal(t, hshA, hshB)
+
+	assert.Equal(t, int(ta.blockChain.Height()), numBlocks)
+	assert.Equal(t, int(tb.blockChain.Height()), numBlocks)
+
+	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), numBlocks+1)
+	assert.Equal(t, len(tb.blockChain.GetBlockHashes()), numBlocks+1)
+
+	txxa := extendBlockChainAuto(t, ta.blockChain, "TA_", numDivergeTx, blockSz, pka)
+	txxb := extendBlockChainAuto(t, tb.blockChain, "TB_", numDivergeTx, blockSz, pkb)
+
+	for _, tx := range txxa {
+		ta.transactionPool.AddTransaction(tx)
+		tb.transactionPool.AddTransaction(tx)
+	}
+
+	for _, tx := range txxb {
+		ta.transactionPool.AddTransaction(tx)
+		tb.transactionPool.AddTransaction(tx)
+	}
+
+	assert.Equal(t, ta.transactionPool.Len(), numTx+2*numDivergeTx)
+	assert.Equal(t, tb.transactionPool.Len(), numTx+2*numDivergeTx)
+
+	assert.Equal(t, int(ta.blockChain.Height()), numBlocks+numDivergeBlocks)
+	assert.Equal(t, int(tb.blockChain.Height()), numBlocks+numDivergeBlocks)
+
+	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), numBlocks+numDivergeBlocks+1)
+	assert.Equal(t, len(tb.blockChain.GetBlockHashes()), numBlocks+numDivergeBlocks+1)
+
+	for i := 0; i < 2; i++ {
+		var tr, otr *LocalBlockChainTransport
+		// var pk, tpk *ecdsa.PrivateKey
+
+		if i == 0 {
+			tr, otr = ta, tb
+		} else {
+			tr, otr = tb, ta
+		}
+
+		// Send block hash
+		assert.Nil(t, tr.SendHashChain(otr.Address()))
+
+		// Rec and send ack
+		recMsg := <-otr.ReadChan()
+
+		recPayload := &BCPayload{}
+		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
+		assert.Equal(t, recPayload.MsgType, MessageHashChain)
+
+		assert.Nil(t, otr.ReceiveMessage(recPayload, tr.Address()))
+
+		// Rec 2
+		recMsg = <-tr.ReadChan()
+
+		recPayload = &BCPayload{}
+		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
+		assert.Equal(t, recPayload.MsgType, MessageBlocksWithHashChain)
+
+		assert.Nil(t, tr.ReceiveMessage(recPayload, otr.Address()))
+		// assert.False(t, true)
+
+		// Rec 3
+		recMsg = <-otr.ReadChan()
+
+		recPayload = &BCPayload{}
+		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
+		assert.Equal(t, recPayload.MsgType, MessageBlocks)
+		
+		assert.Nil(t, otr.ReceiveMessage(recPayload, tr.Address()))
 	}
 
 	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), len(tb.blockChain.GetBlockHashes()))

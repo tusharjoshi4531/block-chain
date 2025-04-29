@@ -60,7 +60,7 @@ func NewBCBlocks(blocks []*core.Block) (*BCPayload, error) {
 }
 
 func NewBCBlocksWithHashChain(blocks []*core.Block, hashChain *core.HashChain) (*BCPayload, error) {
-	payload, err := encodeBlocksWithHashChainBytes(blocks, *hashChain)
+	payload, err := encodeBlocksWithHashChainBytes(blocks, hashChain)
 	if err != nil {
 		return nil, err
 	}
@@ -101,9 +101,8 @@ func encodeBlocksToSerializable(w io.Writer, blocks []*core.Block) error {
 	return util.EncodeSlice(w, encoderSlice)
 }
 
-func encodeBlocksWithHashChain(w io.Writer, blocks []*core.Block, hashChain core.HashChain) error {
-	buf := &bytes.Buffer{}
-	if err := encodeBlocksToSerializable(buf, blocks); err != nil {
+func encodeBlocksWithHashChain(w io.Writer, blocks []*core.Block, hashChain *core.HashChain) error {
+	if err := encodeBlocksToSerializable(w, blocks); err != nil {
 		return err
 	}
 	if err := hashChain.Encode(w); err != nil {
@@ -118,7 +117,7 @@ func encodeBlocksToSerializableBytes(blocks []*core.Block) ([]byte, error) {
 	})
 }
 
-func encodeBlocksWithHashChainBytes(blocks []*core.Block, hashChain core.HashChain) ([]byte, error) {
+func encodeBlocksWithHashChainBytes(blocks []*core.Block, hashChain *core.HashChain) ([]byte, error) {
 	return util.EncodeToBytesUsingEncoder(func(w io.Writer) error {
 		return encodeBlocksWithHashChain(w, blocks, hashChain)
 	})

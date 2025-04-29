@@ -14,10 +14,10 @@ import (
 )
 
 type LocalBlockChainServer struct {
-	*prot.SimpleMiner
-	*prot.SimpleConsumer
-	*prot.SimpleValidator
-	*bcnetwork.LocalBlockChainTransport
+	prot.Miner
+	prot.Comsumer
+	prot.Validator
+	bcnetwork.BlockChainTransport
 	blockChain      core.BlockChain
 	transactionPool core.TransactionPool
 	running         bool
@@ -25,21 +25,41 @@ type LocalBlockChainServer struct {
 	mu              sync.RWMutex
 }
 
-func NewLocalBlockChainTransport(address string) *LocalBlockChainServer {
+func NewSimpleLocalBlockChainServer(address string) *LocalBlockChainServer {
 	bc := core.NewDefaultBlockChain()
 	txPool := core.NewDefaultTransactionPool()
 	privKey := crypto.GeneratePrivateKey()
 	transport := bcnetwork.NewLocalBlockChainTransport(address, bc, txPool)
 
+	return NewLocalBlockChainServer(
+		bc,
+		txPool,
+		privKey,
+		transport,
+		func() prot.Miner { return prot.NewSimpleMiner(bc, txPool, privKey) },
+		func() prot.Comsumer { return prot.NewSimpleConsumer(bc, txPool, transport) },
+		func() prot.Validator { return prot.NewSimpleValidator(bc, privKey) },
+	)
+}
+
+func NewLocalBlockChainServer(
+	blockChain core.BlockChain,
+	txPool core.TransactionPool,
+	privKey *ecdsa.PrivateKey,
+	transport bcnetwork.BlockChainTransport,
+	minerFactory func() prot.Miner,
+	consumerFactory func() prot.Comsumer,
+	validatorFactory func() prot.Validator,
+) *LocalBlockChainServer {
 	return &LocalBlockChainServer{
-		SimpleMiner:              prot.NewSimpleMiner(bc, txPool, privKey),
-		SimpleConsumer:           prot.NewSimpleConsumer(bc, txPool, transport),
-		SimpleValidator:          prot.NewSimpleValidator(bc, privKey),
-		LocalBlockChainTransport: transport,
-		blockChain:               bc,
-		transactionPool:          txPool,
-		privKey:                  privKey,
-		running:                  false,
+		Miner:               minerFactory(),
+		Comsumer:            consumerFactory(),
+		Validator:           validatorFactory(),
+		BlockChainTransport: transport,
+		blockChain:          blockChain,
+		transactionPool:     txPool,
+		privKey:             privKey,
+		running:             false,
 	}
 }
 

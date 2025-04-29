@@ -37,6 +37,7 @@ func NewDefaultBlockChain() *DefaultBlockChain {
 	// TODO: Add genesis block
 	genesisBlock := NewBlock()
 	genesisBlock.Header.Height = 0
+	genesisBlock.Header.Timestamp = 0
 	hash, err := genesisBlock.Hash()
 	if err != nil {
 		panic(err)
@@ -159,10 +160,8 @@ func (blockChain *DefaultBlockChain) addBlockWithoutValidation(blockHash types.H
 func (blockChain *DefaultBlockChain) GetBlockHashes() []types.Hash {
 	chain := make([]types.Hash, 0, len(blockChain.blocks))
 	for hash := range blockChain.blocks {
-		// fmt.Printf("HSH: %s, \nBLCK: %v\n\n", hash.String(), block)
 		chain = append(chain, hash)
 	}
-	// fmt.Println("SZ: ", len(chain))
 	return chain
 }
 

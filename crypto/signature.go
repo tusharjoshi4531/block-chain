@@ -13,6 +13,13 @@ type Signature struct {
 	R, S *big.Int
 }
 
+func NewNilSignature() *Signature {
+	return &Signature{
+		R: big.NewInt(-1),
+		S: big.NewInt(-1),
+	}
+}
+
 func (s *Signature) Verify(publicKey *ecdsa.PublicKey, data []byte) bool {
 	return ecdsa.Verify(publicKey, data, s.R, s.S)
 }

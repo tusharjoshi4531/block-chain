@@ -2,9 +2,7 @@ package core
 
 import (
 	"bytes"
-	"encoding/gob"
 	"fmt"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,29 +76,4 @@ func TestSerializeBlockSlice(t *testing.T) {
 	for i := 0; i < numBlocks; i++ {
 		assert.Equal(t, encBlocks[i].Header, dec[i].Header)
 	}
-}
-
-func testDecodeSlice(t *testing.T, r io.Reader) []*SerializableBlock {
-	// ln := 0
-	// assert.Nil(t, gob.NewDecoder(r).Decode(&ln))
-	// fmt.Println(ln)
-
-	// blck := &SerializableBlock{}
-	// assert.Nil(t, blck.Decode(r))
-	
-	// fmt.Println(blck.Header.Height)
-	// fmt.Println(len(blck.Transactions))
-
-	// assert.False(t, true)
-
-	var length int
-	assert.Nil(t, gob.NewDecoder(r).Decode(&length))
-	fmt.Println(length)
-
-	items := make([]*SerializableBlock, length)
-	for i := 0; i < length - 2; i++ {
-		assert.Nil(t, items[i].Decode(r))
-	}
-
-	return items
 }

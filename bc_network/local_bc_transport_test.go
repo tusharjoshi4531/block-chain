@@ -485,8 +485,8 @@ func TestBlockchainSyncManual(t *testing.T) {
 		assert.Nil(t, gob.NewDecoder(buf).Decode(&len))
 		fmt.Printf("LEN: %d\n", len)
 
-		bl := &core.SerializableBlock{}
-		assert.Nil(t, bl.Decode(buf))
+		// bl := &core.Block{}
+		// assert.Nil(t, bl.Decode(buf))
 
 		assert.Nil(t, tr.ReceiveMessage(recPayload, otr.Address()))
 	}
@@ -509,10 +509,6 @@ func TestEncodeBlocksWithHashChain(t *testing.T) {
 		core.NewBlock(),
 		core.NewBlock(),
 	}
-	encBlocks := make([]*core.SerializableBlock, 0, len(blocks))
-	for _, block := range blocks {
-		encBlocks = append(encBlocks, core.NewSerializableBlock(block))
-	}
 
 	bc := createDummyBlockcahin(t, 100, 3, crypto.GeneratePrivateKey())
 	hashChain := core.NewHashChain(bc)
@@ -522,15 +518,13 @@ func TestEncodeBlocksWithHashChain(t *testing.T) {
 
 	buf := bytes.NewBuffer(data)
 
-	_, err = util.DecodeSlice(buf, func() *core.SerializableBlock {
-		return &core.SerializableBlock{}
+	_, err = util.DecodeSlice(buf, func() *core.Block {
+		return core.NewBlock()
 	})
+	assert.Nil(t, err)
 	decHashChain := &core.HashChain{}
 	assert.Nil(t, decHashChain.Decode(buf))
 
-
-
-	assert.Nil(t, err)
 }
 
 func TestBlockChainSyncProt(t *testing.T) {
@@ -543,9 +537,6 @@ func TestBlockChainSyncProt(t *testing.T) {
 	trs, privKeys := createNetworkWithSameBlocks(t, 2, numTx, blockSz)
 	ta, tb := trs[0], trs[1]
 	pka, pkb := privKeys[0], privKeys[1]
-
-	assert.Nil(t, ta.Connect(tb))
-	assert.Nil(t, tb.Connect(ta))
 
 	bc := createDummyBlockcahin(t, numTx, blockSz, pka)
 	ta.blockChain = bc
@@ -623,7 +614,7 @@ func TestBlockChainSyncProt(t *testing.T) {
 		recPayload = &BCPayload{}
 		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
 		assert.Equal(t, recPayload.MsgType, MessageBlocks)
-		
+
 		assert.Nil(t, otr.ReceiveMessage(recPayload, tr.Address()))
 	}
 

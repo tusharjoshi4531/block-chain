@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
-	"sort"
 
 	"github.com/tusharjoshi4531/block-chain.git/core"
 	"github.com/tusharjoshi4531/block-chain.git/util"
@@ -17,6 +16,21 @@ const (
 	MessageBlocksWithHashChain
 	// MessageTXSync
 )
+
+func MsgTypeToString(msgType int) string {
+	switch msgType {
+	case MessageTransaction:
+		return "Transaction"
+	case MessageHashChain:
+		return "HashChain"
+	case MessageBlocks:
+		return "Blocks"
+	case MessageBlocksWithHashChain:
+		return "HashChainWithBlocks"
+	default:
+		return "Invalid"
+	}
+}
 
 type BCPayload struct {
 	MsgType int
@@ -48,7 +62,7 @@ func NewBCHashChain(hashChain *core.HashChain) (*BCPayload, error) {
 }
 
 func NewBCBlocks(blocks []*core.Block) (*BCPayload, error) {
-	payload, err := encodeBlocksToSerializableBytes(blocks)
+	payload, err := encodeBlocksToBytes(blocks)
 	if err != nil {
 		return nil, err
 	}
@@ -87,22 +101,12 @@ func (payload *BCPayload) Decode(r io.Reader) error {
 	return gob.NewDecoder(r).Decode(payload)
 }
 
-func encodeBlocksToSerializable(w io.Writer, blocks []*core.Block) error {
-	encodedBlocks := make([]*core.SerializableBlock, 0, len(blocks))
-	for _, block := range blocks {
-		encodedBlocks = append(encodedBlocks, core.NewSerializableBlock(block))
-	}
-
-	sort.Slice(encodedBlocks, func(i, j int) bool {
-		return encodedBlocks[i].Header.Height < encodedBlocks[j].Header.Height
-	})
-
-	encoderSlice := util.ToEncoderSlice(encodedBlocks)
-	return util.EncodeSlice(w, encoderSlice)
+func encodeBlocks(w io.Writer, blocks []*core.Block) error {
+	return util.EncodeSlice(w, util.ToEncoderSlice(blocks))
 }
 
 func encodeBlocksWithHashChain(w io.Writer, blocks []*core.Block, hashChain *core.HashChain) error {
-	if err := encodeBlocksToSerializable(w, blocks); err != nil {
+	if err := encodeBlocks(w, blocks); err != nil {
 		return err
 	}
 	if err := hashChain.Encode(w); err != nil {
@@ -111,11 +115,10 @@ func encodeBlocksWithHashChain(w io.Writer, blocks []*core.Block, hashChain *cor
 	return nil
 }
 
-func encodeBlocksToSerializableBytes(blocks []*core.Block) ([]byte, error) {
-	return util.EncodeToBytesUsingEncoder(func(w io.Writer) error {
-		return encodeBlocksToSerializable(w, blocks)
-	})
+func encodeBlocksToBytes(blocks []*core.Block) ([]byte, error) {
+	return util.EncodeSliceToBytes(util.ToEncoderSlice(blocks))
 }
+
 
 func encodeBlocksWithHashChainBytes(blocks []*core.Block, hashChain *core.HashChain) ([]byte, error) {
 	return util.EncodeToBytesUsingEncoder(func(w io.Writer) error {

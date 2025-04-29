@@ -66,7 +66,7 @@ func NewBlock() *Block {
 		},
 		Transactions: []*Transaction{},
 		Validator:    &ecdsa.PublicKey{},
-		Signature:    &crypto.Signature{},
+		Signature:    crypto.NewNilSignature(),
 	}
 }
 
@@ -203,23 +203,28 @@ func (block *Block) Bytes() ([]byte, error) {
 }
 
 func (block *Block) Decode(r io.Reader) error {
+	fmt.Println("Decoding")
 	if err := block.Header.Decode(r); err != nil {
 		return err
 	}
+	fmt.Println("DecodedHeader")
 
 	if err := block.DecodeData(r); err != nil {
 		return err
 	}
+	fmt.Println("DecodedData")
 
 	serializedValidator := &crypto.SerializablePublicKey{}
 	if err := serializedValidator.Decode(r); err != nil {
 		return err
 	}
 	block.Validator = crypto.DecodePublicKey(serializedValidator)
-
+	fmt.Println("Validator")
+	fmt.Println(block.Signature)
 	if err := block.Signature.Decode(r); err != nil {
 		return err
 	}
+	fmt.Println("Signature")
 	return nil
 }
 

@@ -7,6 +7,26 @@ import (
 	"io"
 )
 
+func EncoderGobEncodables(w io.Writer, vals ...any) error {
+	enc := gob.NewEncoder(w)
+	for _, val := range vals {
+		if err := enc.Encode(val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DecodeGobDecodable(r io.Reader, vals ...any) error {
+	dec := gob.NewDecoder(r)
+	for _, val := range vals {
+		if err := dec.Decode(val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type Encoder interface {
 	Encode(io.Writer) error
 }

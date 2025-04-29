@@ -14,16 +14,42 @@ import (
 	"github.com/tusharjoshi4531/block-chain.git/util"
 )
 
+type Nonce interface {
+	util.Encoder
+	util.Decoder
+}
+
+type NilNonce struct{}
+
+func (*NilNonce) Encode(w io.Writer) error {
+	return nil
+}
+
+func (*NilNonce) Decode(r io.Reader) error {
+	return nil
+}
+
 type BlockHeader struct {
 	Version       uint32
 	DataHash      types.Hash
 	PrevBlockHash types.Hash
 	Timestamp     int64
 	Height        uint32
+	Nonce         Nonce
 }
 
 func (header *BlockHeader) Encode(w io.Writer) error {
-	return gob.NewEncoder(w).Encode(header)
+	if err := util.EncoderGobEncodables(
+		w,
+		header.Version,
+		header.DataHash,
+		header.PrevBlockHash,
+		header.Timestamp,
+		header.Height,
+	); err != nil {
+		return err
+	}
+	return header.Nonce.Encode(w)
 }
 
 func (header *BlockHeader) Bytes() ([]byte, error) {
@@ -35,7 +61,17 @@ func (header *BlockHeader) Bytes() ([]byte, error) {
 }
 
 func (header *BlockHeader) Decode(r io.Reader) error {
-	return gob.NewDecoder(r).Decode(header)
+	if err := util.DecodeGobDecodable(
+		r,
+		&header.Version,
+		&header.DataHash,
+		&header.PrevBlockHash,
+		&header.Timestamp,
+		&header.Height,
+	); err != nil {
+		return err
+	}
+	return header.Nonce.Decode(r)
 }
 
 func (header *BlockHeader) Hash() (types.Hash, error) {
@@ -63,6 +99,7 @@ func NewBlock() *Block {
 			PrevBlockHash: types.Hash{},
 			Timestamp:     time.Now().UnixNano(),
 			Height:        0,
+			Nonce:         &NilNonce{},
 		},
 		Transactions: []*Transaction{},
 		Validator:    &ecdsa.PublicKey{},

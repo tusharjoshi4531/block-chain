@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tusharjoshi4531/block-chain.git/core"
 	"github.com/tusharjoshi4531/block-chain.git/crypto"
+	"github.com/tusharjoshi4531/block-chain.git/prot"
 	"github.com/tusharjoshi4531/block-chain.git/types"
 )
 
@@ -29,11 +30,13 @@ func TestMineBlock(t *testing.T) {
 		assert.Nil(t, txPool.AddTransaction(tx))
 	}
 
-	numBlocks := 1
+	numBlocks := 4
 	blockSz := 20
 
-	validator := NewPowValidator(4)
-	miner := NewPowMiner(validator, bc, txPool, privKey)
+	prefZeros := uint8(2)
+	validator := NewPowValidator(prefZeros)
+	rewarder := prot.NewSimpleRewarder(privKey)
+	miner := NewPowMiner(prefZeros, bc, txPool, privKey, rewarder)
 
 	for i := 0; i < numBlocks; i++ {
 		block, err := miner.MineBlock(uint32(blockSz))

@@ -8,6 +8,22 @@ import (
 	"github.com/tusharjoshi4531/block-chain.git/core"
 )
 
+type SimpleRewarder struct {
+	privateKey *ecdsa.PrivateKey
+}
+
+func NewSimpleRewarder(privKey *ecdsa.PrivateKey) *SimpleRewarder {
+	return &SimpleRewarder{
+		privateKey: privKey,
+	}
+}
+
+func (rewarder *SimpleRewarder) GenerateReward(winner string) (*core.Transaction, error) {
+	tx := core.NewTransaction([]byte("REWARD"))
+	err := tx.Sign(rewarder.privateKey)
+	return tx, err
+}
+
 type SimpleValidator struct {
 	blockChain core.BlockChain
 	privateKey *ecdsa.PrivateKey
@@ -42,6 +58,7 @@ func (valdator *SimpleValidator) ValidateBlock(block *core.Block) error {
 type SimpleMiner struct {
 	blockChain      core.BlockChain
 	transactionPool core.TransactionPool
+	rewarder        Rewarder
 	privateKey      *ecdsa.PrivateKey
 }
 
@@ -50,6 +67,7 @@ func NewSimpleMiner(blockChain core.BlockChain, transactionPool core.Transaction
 		blockChain:      blockChain,
 		transactionPool: transactionPool,
 		privateKey:      privateKey,
+		rewarder:        NewSimpleRewarder(privateKey),
 	}
 }
 
@@ -81,8 +99,8 @@ func (miner *SimpleMiner) MineBlock(transactionsLimit uint32) (*core.Block, erro
 		numTx++
 		block.AddTransaction(transaction)
 	}
-	reward := core.NewTransaction([]byte("Reward"))
-	if err := reward.Sign(miner.privateKey); err != nil {
+	reward, err := miner.rewarder.GenerateReward("")
+	if err != nil {
 		return nil, err
 	}
 

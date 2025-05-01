@@ -114,6 +114,11 @@ func NewBlockWithHeaderInfo(height uint32, prevBlockHash types.Hash) *Block {
 	return block
 }
 
+func (block *Block) SetNonce(nonce Nonce) {
+	block.Header.Nonce = nonce
+	block.hash = types.Hash{}
+}
+
 func (block *Block) Hash() (types.Hash, error) {
 	if !block.hash.IsZero() {
 		return block.hash, nil

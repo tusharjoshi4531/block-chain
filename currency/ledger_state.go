@@ -2,6 +2,8 @@ package currency
 
 import "fmt"
 
+const RewardSymbol = "::"
+
 type LedgerState interface {
 	CommitTransaciton(transaction *Transaction) error
 	RevertTransaction(transaction *Transaction) error
@@ -28,14 +30,26 @@ func (state *MemoryLedgerState) HasMember(id string) bool {
 
 func (state *MemoryLedgerState) CommitTransaciton(transaction *Transaction) error {
 	from, to := transaction.From, transaction.To
-	if !state.HasMember(from) {
-		return fmt.Errorf("no member with id (%s) is present in ledger", from)
+	amt := transaction.Amount
+
+	if from == RewardSymbol {
+		state.balance[to] += amt
+		return nil
 	}
+
+	if to == RewardSymbol {
+		state.balance[from] -= amt
+		return nil
+	}
+
 	if !state.HasMember(to) {
 		return fmt.Errorf("no member with id (%s) is present in ledger", to)
 	}
 
-	amt := transaction.Amount
+	if !state.HasMember(from) {
+		return fmt.Errorf("no member with id (%s) is present in ledger", from)
+	}
+
 	fromAmt := state.balance[from]
 	if fromAmt < amt {
 		return fmt.Errorf("sender (%s) does not have enough balance", from)

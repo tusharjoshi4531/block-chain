@@ -1,6 +1,7 @@
 package currency
 
 import (
+	"bytes"
 	"encoding/gob"
 	"io"
 
@@ -20,6 +21,12 @@ func NewTransaction(from string, to string, amount float64) *Transaction {
 		To:     to,
 		Amount: amount,
 	}
+}
+
+func NewTransactionFromCoreTransaction(tx *core.Transaction) (*Transaction, error) {
+	transaction := &Transaction{}
+	err := transaction.Decode(bytes.NewReader(tx.Data))
+	return transaction, err
 }
 
 func (tx *Transaction) Encode(w io.Writer) error {

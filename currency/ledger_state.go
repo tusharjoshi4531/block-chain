@@ -7,10 +7,10 @@ const RewardSymbol = "::"
 type LedgerState interface {
 	CommitTransaciton(transaction *Transaction) error
 	RevertTransaction(transaction *Transaction) error
-	HasMember(id string) bool
-	AddMember(id string, balance float64) error
+	HasWallet(id string) bool
+	AddWallet(id string, balance float64) error
 	GetBalance(id string) (float64, error)
-	GetMembers() []string
+	GetWallets() []string
 }
 
 type MemoryLedgerState struct {
@@ -23,7 +23,7 @@ func NewMemoryLedgerState() *MemoryLedgerState {
 	}
 }
 
-func (state *MemoryLedgerState) HasMember(id string) bool {
+func (state *MemoryLedgerState) HasWallet(id string) bool {
 	_, ok := state.balance[id]
 	return ok
 }
@@ -42,11 +42,11 @@ func (state *MemoryLedgerState) CommitTransaciton(transaction *Transaction) erro
 		return nil
 	}
 
-	if !state.HasMember(to) {
+	if !state.HasWallet(to) {
 		return fmt.Errorf("no member with id (%s) is present in ledger", to)
 	}
 
-	if !state.HasMember(from) {
+	if !state.HasWallet(from) {
 		return fmt.Errorf("no member with id (%s) is present in ledger", from)
 	}
 
@@ -66,11 +66,11 @@ func (state *MemoryLedgerState) RevertTransaction(transaction *Transaction) erro
 	return state.CommitTransaciton(revTransaction)
 }
 
-func (state *MemoryLedgerState) AddMember(id string, balance float64) error {
-	if state.HasMember(id) {
-		return fmt.Errorf("member with id (%s) is already present in ledger", id)
+func (state *MemoryLedgerState) AddWallet(walletId string, balance float64) error {
+	if state.HasWallet(walletId) {
+		return fmt.Errorf("member with id (%s) is already present in ledger", walletId)
 	}
-	state.balance[id] = balance
+	state.balance[walletId] = balance
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (state *MemoryLedgerState) GetBalance(id string) (float64, error) {
 	return balance, nil
 }
 
-func (state *MemoryLedgerState) GetMembers() []string {
+func (state *MemoryLedgerState) GetWallets() []string {
 	members := make([]string, 0, len(state.balance))
 	for member := range state.balance {
 		members = append(members, member)

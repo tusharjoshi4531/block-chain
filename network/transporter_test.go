@@ -18,7 +18,7 @@ func TestConnect(t *testing.T) {
 	assert.Equal(t, tb.peers["A"], ta)
 }
 
-func TestSendMessage(t *testing.T) {
+func TestSendMessageTo(t *testing.T) {
 	ta := NewLocalTransport("A")
 	tb := NewLocalTransport("B")
 
@@ -34,7 +34,7 @@ func TestSendMessage(t *testing.T) {
 		Payload: payload,
 	}
 
-	assert.Nil(t, ta.SendMessage("B", &msg))
+	assert.Nil(t, ta.SendMessageTo("B", &msg))
 	msgrv := <-tb.ReadChan()
 
 	assert.Equal(t, msgrv, msg)

@@ -13,16 +13,18 @@ type PowMiner struct {
 	blockChain               core.BlockChain
 	transactionPool          core.TransactionPool
 	privateKey               *ecdsa.PrivateKey
+	minerId                  string
 	rewarder                 prot.Rewarder
 }
 
-func NewPowMiner(prefixZerosInHex uint8, bc core.BlockChain, txPool core.TransactionPool, privKey *ecdsa.PrivateKey, rewarder prot.Rewarder) *PowMiner {
+func NewPowMiner(prefixZerosInHex uint8, bc core.BlockChain, txPool core.TransactionPool, privKey *ecdsa.PrivateKey, minerId string, rewarder prot.Rewarder) *PowMiner {
 	return &PowMiner{
 		RequiredPrefixZerosInHex: prefixZerosInHex,
 		blockChain:               bc,
 		transactionPool:          txPool,
 		privateKey:               privKey,
 		rewarder:                 rewarder,
+		minerId:                  minerId,
 	}
 }
 
@@ -52,7 +54,7 @@ func (miner *PowMiner) MineBlock(transactionsLimit uint32) (*core.Block, error) 
 		numTx++
 		block.AddTransaction(transaction)
 	}
-	reward, err := miner.rewarder.GenerateReward()
+	reward, err := miner.rewarder.GenerateReward(miner.minerId)
 	if err != nil {
 		return nil, err
 	}

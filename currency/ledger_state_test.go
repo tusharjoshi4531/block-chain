@@ -10,8 +10,8 @@ import (
 func TestCommitTransaction(t *testing.T) {
 	state := NewMemoryLedgerState()
 
-	assert.Nil(t, state.AddMember("A", 100))
-	assert.Nil(t, state.AddMember("B", 100))
+	assert.Nil(t, state.AddWallet("A", 100))
+	assert.Nil(t, state.AddWallet("B", 100))
 
 	tx1 := NewTransaction(RewardSymbol, "A", 50)
 	tx2 := NewTransaction("A", "B", 13)
@@ -32,8 +32,8 @@ func TestCommitTransaction(t *testing.T) {
 func TestRevertTransaction(t *testing.T) {
 	state := NewMemoryLedgerState()
 
-	assert.Nil(t, state.AddMember("A", 100))
-	assert.Nil(t, state.AddMember("B", 100))
+	assert.Nil(t, state.AddWallet("A", 100))
+	assert.Nil(t, state.AddWallet("B", 100))
 
 	tx1 := NewTransaction(RewardSymbol, "A", 50)
 	tx2 := NewTransaction("A", "B", 13)
@@ -65,8 +65,8 @@ func TestRevertTransaction(t *testing.T) {
 func TestInvalidTransaction(t *testing.T) {
 	state := NewMemoryLedgerState()
 
-	assert.Nil(t, state.AddMember("A", 100))
-	assert.Nil(t, state.AddMember("B", 100))
+	assert.Nil(t, state.AddWallet("A", 100))
+	assert.Nil(t, state.AddWallet("B", 100))
 
 	tx1 := NewTransaction(RewardSymbol, "A", 50)
 	tx2 := NewTransaction("A", "B", 200)
@@ -84,11 +84,11 @@ func TestInvalidTransaction(t *testing.T) {
 	assert.Equal(t, balance, float64(100))
 }
 
-func TestAddMember(t *testing.T) {
+func TestAddWallet(t *testing.T) {
 	state := NewMemoryLedgerState()
 
-	assert.Nil(t, state.AddMember("A", 100))
-	assert.Nil(t, state.AddMember("B", 100))
+	assert.Nil(t, state.AddWallet("A", 100))
+	assert.Nil(t, state.AddWallet("B", 100))
 
 	tx1 := NewTransaction(RewardSymbol, "A", 50)
 	tx2 := NewTransaction("A", "B", 200)
@@ -105,7 +105,7 @@ func TestAddMember(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, balance, float64(100))
 
-	assert.Nil(t, state.AddMember("C", 1000))
+	assert.Nil(t, state.AddWallet("C", 1000))
 	tx3 := NewTransaction("C", "A", 500)
 
 	assert.Nil(t, state.CommitTransaciton(tx3))
@@ -123,5 +123,5 @@ func TestAddMember(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, balance, float64(1000-500))
 
-	assert.Equal(t, len(state.GetMembers()), 3)
+	assert.Equal(t, len(state.GetWallets()), 3)
 }

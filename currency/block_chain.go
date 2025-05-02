@@ -48,8 +48,8 @@ func (blockChain *BlockChain) AddBlock(block *core.Block) error {
 	return nil
 }
 
-func (blockChain *BlockChain) AddMember(id string) error {
-	return blockChain.state.AddMember(id, blockChain.initBalance)
+func (blockChain *BlockChain) AddWallet(walletId string) error {
+	return blockChain.state.AddWallet(walletId, blockChain.initBalance)
 }
 
 func (blockChain *BlockChain) updateLedger(prevHighestHash, currHighestHash types.Hash) error {

@@ -8,13 +8,13 @@ import (
 type Consumer struct {
 	blockChain      core.BlockChain
 	transactionPool core.TransactionPool
-	transport       bcnetwork.BlockChainTransport
+	transport       bcnetwork.BlockChainTransportSender
 }
 
 func NewSimpleConsumer(
 	blockChain core.BlockChain,
 	transactionPool core.TransactionPool,
-	transport bcnetwork.BlockChainTransport,
+	transport bcnetwork.BlockChainTransportSender,
 ) *Consumer {
 	return &Consumer{
 		blockChain:      blockChain,

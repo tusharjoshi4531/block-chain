@@ -14,6 +14,7 @@ const (
 	MessageHashChain
 	MessageBlocks
 	MessageBlocksWithHashChain
+	MessageWalletId
 	// MessageTXSync
 )
 
@@ -27,6 +28,8 @@ func MsgTypeToString(msgType int) string {
 		return "Blocks"
 	case MessageBlocksWithHashChain:
 		return "HashChainWithBlocks"
+	case MessageWalletId:
+		return "WalletId"
 	default:
 		return "Invalid"
 	}
@@ -85,6 +88,18 @@ func NewBCBlocksWithHashChain(blocks []*core.Block, hashChain *core.HashChain) (
 	}, nil
 }
 
+func NewBCWalletId(walletId string) (*BCPayload, error) {
+	buf := &bytes.Buffer{}
+	if err := gob.NewEncoder(buf).Encode(walletId); err != nil {
+		return nil, err
+	}
+
+	return &BCPayload{
+		MsgType: MessageWalletId,
+		Payload: buf.Bytes(),
+	}, nil
+}
+
 func (payload *BCPayload) Encode(w io.Writer) error {
 	return gob.NewEncoder(w).Encode(payload)
 }
@@ -118,7 +133,6 @@ func encodeBlocksWithHashChain(w io.Writer, blocks []*core.Block, hashChain *cor
 func encodeBlocksToBytes(blocks []*core.Block) ([]byte, error) {
 	return util.EncodeSliceToBytes(util.ToEncoderSlice(blocks))
 }
-
 
 func encodeBlocksWithHashChainBytes(blocks []*core.Block, hashChain *core.HashChain) ([]byte, error) {
 	return util.EncodeToBytesUsingEncoder(func(w io.Writer) error {

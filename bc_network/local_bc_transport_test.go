@@ -26,8 +26,8 @@ func TestLocalPeer(t *testing.T) {
 	ta := NewLocalBlockChainTransport("a", bc, txPoolA)
 	tb := NewLocalBlockChainTransport("b", bc, txPoolB)
 
-	ta.LocalTransport.Connect(tb.LocalTransport)
-	tb.LocalTransport.Connect(ta.LocalTransport)
+	ta.Connect(tb)
+	tb.Connect(ta)
 
 	// Create transactions
 	numTxA := 10
@@ -93,8 +93,8 @@ func TestLocalPeerWithReceive(t *testing.T) {
 	ta := NewLocalBlockChainTransport("a", bc, txPoolA)
 	tb := NewLocalBlockChainTransport("b", bc, txPoolB)
 
-	ta.Connect(tb.LocalTransport)
-	tb.Connect(ta.LocalTransport)
+	ta.Connect(tb)
+	tb.Connect(ta)
 
 	// Create transactions
 	numTxA := 10
@@ -131,7 +131,7 @@ func TestLocalPeerWithReceive(t *testing.T) {
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
 		assert.Equal(t, recPayload.MsgType, MessageTransaction)
-		err := tb.ReceiveMessage(recPayload, ta.Address())
+		err := tb.ProcessMessage(recPayload, ta.Address())
 		assert.Nil(t, err)
 	}
 
@@ -141,7 +141,7 @@ func TestLocalPeerWithReceive(t *testing.T) {
 		recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
 		assert.Equal(t, recPayload.MsgType, MessageTransaction)
-		err := ta.ReceiveMessage(recPayload, tb.Address())
+		err := ta.ProcessMessage(recPayload, tb.Address())
 		assert.Nil(t, err)
 	}
 
@@ -166,8 +166,8 @@ func TestLocalNetwork(t *testing.T) {
 
 	for i := 0; i < connSize; i++ {
 		for j := i + 1; j < connSize; j++ {
-			assert.Nil(t, ts[i].Connect(ts[j].LocalTransport))
-			assert.Nil(t, ts[j].Connect(ts[i].LocalTransport))
+			assert.Nil(t, ts[i].Connect(ts[j]))
+			assert.Nil(t, ts[j].Connect(ts[i]))
 		}
 	}
 
@@ -208,8 +208,8 @@ func TestConcurrentLocalNetworl(t *testing.T) {
 	for i := 0; i < numNodes; i++ {
 		transports[i], pks[i] = createLocalBlockchainTransport(fmt.Sprintf("Node: %d", i))
 		for j := 0; j < i; j++ {
-			transports[i].Connect(transports[j].LocalTransport)
-			transports[j].Connect(transports[i].LocalTransport)
+			transports[i].Connect(transports[j])
+			transports[j].Connect(transports[i])
 		}
 	}
 
@@ -249,7 +249,7 @@ func TestConcurrentLocalNetworl(t *testing.T) {
 				recPayload.Decode(bytes.NewBuffer(recMsg.Payload))
 
 				assert.Equal(t, recPayload.MsgType, MessageTransaction)
-				assert.Nil(t, transports[i].ReceiveMessage(recPayload, ""))
+				assert.Nil(t, transports[i].ProcessMessage(recPayload, ""))
 			}
 		}(i)
 	}
@@ -488,7 +488,7 @@ func TestBlockchainSyncManual(t *testing.T) {
 		// bl := &core.Block{}
 		// assert.Nil(t, bl.Decode(buf))
 
-		assert.Nil(t, tr.ReceiveMessage(recPayload, otr.Address()))
+		assert.Nil(t, tr.ProcessMessage(recPayload, otr.Address()))
 	}
 
 	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), len(tb.blockChain.GetBlockHashes()))
@@ -596,7 +596,7 @@ func TestBlockChainSyncProt(t *testing.T) {
 		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
 		assert.Equal(t, recPayload.MsgType, MessageHashChain)
 
-		assert.Nil(t, otr.ReceiveMessage(recPayload, tr.Address()))
+		assert.Nil(t, otr.ProcessMessage(recPayload, tr.Address()))
 
 		// Rec 2
 		recMsg = <-tr.ReadChan()
@@ -605,7 +605,7 @@ func TestBlockChainSyncProt(t *testing.T) {
 		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
 		assert.Equal(t, recPayload.MsgType, MessageBlocksWithHashChain)
 
-		assert.Nil(t, tr.ReceiveMessage(recPayload, otr.Address()))
+		assert.Nil(t, tr.ProcessMessage(recPayload, otr.Address()))
 		// assert.False(t, true)
 
 		// Rec 3
@@ -615,7 +615,7 @@ func TestBlockChainSyncProt(t *testing.T) {
 		assert.Nil(t, recPayload.Decode(bytes.NewBuffer(recMsg.Payload)))
 		assert.Equal(t, recPayload.MsgType, MessageBlocks)
 
-		assert.Nil(t, otr.ReceiveMessage(recPayload, tr.Address()))
+		assert.Nil(t, otr.ProcessMessage(recPayload, tr.Address()))
 	}
 
 	assert.Equal(t, len(ta.blockChain.GetBlockHashes()), len(tb.blockChain.GetBlockHashes()))

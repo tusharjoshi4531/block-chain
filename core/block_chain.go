@@ -7,6 +7,7 @@ import (
 )
 
 type BlockChain interface {
+	AddWallet(string) error
 	AddBlock(*Block) error
 	GetHeighestBlock() *Block
 	GetGenesis() *Block
@@ -47,6 +48,10 @@ func NewDefaultBlockChain() *DefaultBlockChain {
 	chain.genesis = genesisBlock
 
 	return chain
+}
+
+func (blockChain *DefaultBlockChain) AddWallet(wallet string) error {
+	return nil
 }
 
 func (blockChain *DefaultBlockChain) GetGenesis() *Block {

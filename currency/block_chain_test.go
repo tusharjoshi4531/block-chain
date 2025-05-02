@@ -15,8 +15,8 @@ func TestBlockChainLedger(t *testing.T) {
 	privKey := crypto.GeneratePrivateKey()
 	bc := NewBlockChain(state, initBal)
 
-	bc.AddMember("A")
-	bc.AddMember("B")
+	bc.AddWallet("A")
+	bc.AddWallet("B")
 
 	// commonBlocks := make([]*core.Block, 0)
 

@@ -113,10 +113,10 @@ type SimpleConsumer struct {
 	blockChain      core.BlockChain
 	transactionPool core.TransactionPool
 	// privateKey      *ecdsa.PrivateKey
-	transport bcnetwork.BlockChainTransport
+	transport bcnetwork.BlockChainTransportSender
 }
 
-func NewSimpleConsumer(blockChain core.BlockChain, transactionPool core.TransactionPool, transport bcnetwork.BlockChainTransport) *SimpleConsumer {
+func NewSimpleConsumer(blockChain core.BlockChain, transactionPool core.TransactionPool, transport bcnetwork.BlockChainTransportSender) *SimpleConsumer {
 	return &SimpleConsumer{
 		blockChain:      blockChain,
 		transactionPool: transactionPool,

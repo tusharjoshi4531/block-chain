@@ -36,7 +36,7 @@ func TestMineBlock(t *testing.T) {
 	prefZeros := uint8(2)
 	validator := NewPowValidator(prefZeros)
 	rewarder := prot.NewSimpleRewarder(privKey)
-	miner := NewPowMiner(prefZeros, bc, txPool, privKey, rewarder)
+	miner := NewPowMiner(prefZeros, bc, txPool, privKey, "", rewarder)
 
 	for i := 0; i < numBlocks; i++ {
 		block, err := miner.MineBlock(uint32(blockSz))

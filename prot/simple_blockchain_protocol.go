@@ -71,7 +71,7 @@ func NewSimpleMiner(blockChain core.BlockChain, transactionPool core.Transaction
 	}
 }
 
-func (miner *SimpleMiner) MineBlock(transactionsLimit uint32) (*core.Block, error) {
+func (miner *SimpleMiner) MineBlock(transactionsLimit uint32, minerWalletId string) (*core.Block, error) {
 	bc := miner.blockChain
 	txPool := miner.transactionPool
 

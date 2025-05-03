@@ -11,7 +11,7 @@ type Validator interface {
 }
 
 type Miner interface {
-	MineBlock(transactionsLimit uint32) (*core.Block, error)
+	MineBlock(transactionsLimit uint32, minerWalletId string) (*core.Block, error)
 }
 
 type Comsumer interface {

@@ -1,13 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"strings"
+
+	bcnetwork "github.com/tusharjoshi4531/block-chain.git/bc_network"
+	"github.com/tusharjoshi4531/block-chain.git/core"
+	"github.com/tusharjoshi4531/block-chain.git/crypto"
 	"github.com/tusharjoshi4531/block-chain.git/currency"
+	"github.com/tusharjoshi4531/block-chain.git/network"
+	"github.com/tusharjoshi4531/block-chain.git/shell"
 	"github.com/tusharjoshi4531/block-chain.git/tcp"
 )
 
@@ -17,7 +20,23 @@ func main() {
 
 	fmt.Println(addr)
 
-	server := tcp.NewTcpServer(addr)
+	ledger := currency.NewMemoryLedgerState()
+	bc := currency.NewBlockChain(ledger, 10000)
+	txPool := core.NewDefaultTransactionPool()
+	privKey := crypto.GeneratePrivateKey()
+	bcTransport := bcnetwork.NewDefaultBlockChainTransport(
+		network.NewDefaultTransport(addr),
+		bc,
+		txPool,
+	)
+
+	server := tcp.NewTcpServer(
+		ledger,
+		bc,
+		txPool,
+		privKey,
+		bcTransport,
+	)
 
 	for _, peer := range peers {
 		if err := server.Connect(tcp.NewTcpTransportInterface(peer)); err != nil {
@@ -25,95 +44,9 @@ func main() {
 		}
 	}
 
-	server.Listen()
+	sh := shell.NewShellInterface(server)
 
-	scanner := bufio.NewScanner(os.Stdin)
-	for {
-		fmt.Printf(">>> ")
-		if scanner.Scan() {
-			cmd := scanner.Text()
-			words := strings.Fields(cmd)
-
-			if words[0] == "add_wallet" {
-				if len(words) < 2 {
-					fmt.Println("ERROR: incomplet arguments")
-					continue
-				}
-				walletId := words[1]
-
-				if err := server.AddWallet(walletId); err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-				} else {
-					fmt.Printf("Added wallet (%s) to block chain\n", walletId)
-				}
-			} else if words[0] == "wallets" {
-				wallets := server.Ledger.GetWallets()
-				fmt.Printf("Wallets: %v\n", wallets)
-			} else if words[0] == "transact" {
-				if len(words) < 4 {
-					fmt.Println("ERROR: incomplet arguments")
-					continue
-				}
-
-				from := words[1]
-				to := words[2]
-				amt, err := strconv.ParseFloat(words[3], 64)
-				if err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-				}
-
-				transaction := currency.NewTransaction(from, to, amt)
-				tx, err := transaction.ToCoreTransaction()
-				if err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-					continue
-				}
-
-				if err := tx.Sign(server.PrivKey); err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-					continue
-				}
-
-				if err := server.AddTransaction(tx); err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-					continue
-				}
-			} else if words[0] == "mine" {
-				block, err := server.MineBlock(10)
-				if err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-					continue
-				}
-
-				err = block.Sign(server.PrivKey)
-				if err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-					continue
-				}
-
-				err = server.BlockChain.AddBlock(block)
-				if err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-					continue
-				}
-
-				fmt.Println("new block created")
-			} else if words[0] == "balance" {
-				if len(words) < 2 {
-					fmt.Println("ERROR: incomplet arguments")
-					continue
-				}
-				walletId := words[1]
-
-				balance, err := server.Ledger.GetBalance(walletId)
-				if err != nil {
-					fmt.Printf("ERROR: %s\n", err.Error())
-					continue
-				}
-				fmt.Printf("Wallet (%s) : %f\n", walletId, balance)
-			}
-		}
-	}
+	sh.Run()
 }
 
 func parseArgs(args []string) (string, []string) {

@@ -10,7 +10,6 @@ import (
 
 	bcnetwork "github.com/tusharjoshi4531/block-chain.git/bc_network"
 	"github.com/tusharjoshi4531/block-chain.git/core"
-	"github.com/tusharjoshi4531/block-chain.git/crypto"
 	"github.com/tusharjoshi4531/block-chain.git/currency"
 	"github.com/tusharjoshi4531/block-chain.git/network"
 	"github.com/tusharjoshi4531/block-chain.git/pow"
@@ -23,19 +22,18 @@ type TCPServer struct {
 	BlockChain core.BlockChain
 	Ledger     currency.LedgerState
 	PrivKey    *ecdsa.PrivateKey
+	TxPool     core.TransactionPool
 }
 
-func NewTcpServer(address string) *TCPServer {
-	ledger := currency.NewMemoryLedgerState()
-	bc := currency.NewBlockChain(ledger, 10000)
-	txPool := core.NewDefaultTransactionPool()
-	privKey := crypto.GeneratePrivateKey()
-	bcTransport := bcnetwork.NewDefaultBlockChainTransport(
-		network.NewDefaultTransport(address),
-		bc,
-		txPool,
-	)
+func NewTcpServer(
+	ledger currency.LedgerState,
+	bc core.BlockChain,
+	txPool core.TransactionPool,
+	privKey *ecdsa.PrivateKey,
+	bcTransport bcnetwork.BlockChainTransport,
+) *TCPServer {
 	return &TCPServer{
+		TxPool:     txPool,
 		BlockChain: bc,
 		PrivKey:    privKey,
 		DefaultBlockChainServer: server.NewDefaultBlockChainServer(
@@ -48,7 +46,6 @@ func NewTcpServer(address string) *TCPServer {
 					1,
 					bc,
 					txPool, privKey,
-					address,
 					currency.NewRewarder(privKey, bc, 100, 10),
 				)
 			},

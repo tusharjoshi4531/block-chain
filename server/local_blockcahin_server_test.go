@@ -125,7 +125,7 @@ func TestLocalServerSync(t *testing.T) {
 	numBlocks := 3
 	blockSz := 5
 	for i := 0; i < numBlocks; i++ {
-		block, err := serverA.MineBlock(uint32(blockSz))
+		block, err := serverA.MineBlock(uint32(blockSz), "")
 		assert.Nil(t, err)
 
 		assert.Nil(t, serverA.blockChain.AddBlock(block))

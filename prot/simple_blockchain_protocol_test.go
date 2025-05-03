@@ -31,7 +31,7 @@ func TestSimpleMining(t *testing.T) {
 
 	numBlocks, blockSz := 3, uint32(10)
 	for i := 0; i < numBlocks; i++ {
-		block, err := miner.MineBlock(blockSz)
+		block, err := miner.MineBlock(blockSz, "")
 		assert.Nil(t, err)
 
 		// Correct block
@@ -77,7 +77,7 @@ func TestGetTransactions(t *testing.T) {
 
 	numBlocks, blockSz := 3, uint32(10)
 	for i := 0; i < numBlocks; i++ {
-		block, err := miner.MineBlock(blockSz)
+		block, err := miner.MineBlock(blockSz, "")
 		assert.Nil(t, err)
 
 		// Correct block

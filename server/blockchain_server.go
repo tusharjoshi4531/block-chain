@@ -13,6 +13,11 @@ import (
 )
 
 type BlockChainServer interface {
+	prot.Miner
+	prot.Comsumer
+	prot.Validator
+	bcnetwork.BlockChainTransport
+
 	Listen()
 	ConnectPeer(network.TransportInterface) error
 	Kill()
@@ -93,4 +98,3 @@ func (server *DefaultBlockChainServer) Kill() {
 func (server *DefaultBlockChainServer) PrivKey() *ecdsa.PrivateKey {
 	return server.privKey
 }
-

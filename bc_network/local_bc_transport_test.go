@@ -259,7 +259,6 @@ func TestConcurrentLocalNetworl(t *testing.T) {
 	}
 
 	txx := transports[0].transactionPool.Transactions()
-	fmt.Println(len(txx))
 	sort.Slice(txx, func(i, j int) bool {
 		return string(txx[i].Data) < string(txx[j].Data)
 	})
@@ -483,10 +482,6 @@ func TestBlockchainSyncManual(t *testing.T) {
 		len := 0
 		buf := bytes.NewBuffer(recPayload.Payload)
 		assert.Nil(t, gob.NewDecoder(buf).Decode(&len))
-		fmt.Printf("LEN: %d\n", len)
-
-		// bl := &core.Block{}
-		// assert.Nil(t, bl.Decode(buf))
 
 		assert.Nil(t, tr.ProcessMessage(recPayload, otr.Address()))
 	}

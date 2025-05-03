@@ -3,7 +3,6 @@ package util
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"io"
 )
 
@@ -58,7 +57,7 @@ func EncodeToBytes(item Encoder) ([]byte, error) {
 func EncodeSlice(w io.Writer, items []Encoder) error {
 	len := len(items)
 	enc := gob.NewEncoder(w)
-	if err := enc.Encode(len); err != nil {
+	if err := enc.Encode(int(len)); err != nil {
 		return err
 	}
 
@@ -84,7 +83,6 @@ func DecodeSlice[T Decoder](r io.Reader, factory func() T) ([]T, error) {
 	if err := gob.NewDecoder(r).Decode(&length); err != nil {
 		return nil, err
 	}
-	fmt.Println(length)
 
 	items := make([]T, 0, length)
 	for i := 0; i < length; i++ {

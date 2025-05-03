@@ -16,6 +16,18 @@ func NewHashChain(blockChain BlockChain) *HashChain {
 	return NewHashChainFromHashes(hashes)
 }
 
+func NewHashChainFromBlocks(blocks []*Block) (*HashChain, error){
+	hashes := make([]types.Hash, 0, len(blocks))
+	for _, block := range blocks {
+		hsh, err := block.Hash()
+		if err != nil {
+			return nil, err
+		}
+		hashes = append(hashes, hsh)
+	}
+	return NewHashChainFromHashes(hashes), nil
+}
+
 func NewHashChainFromHashes(hashes []types.Hash) *HashChain {
 	hashChain := &HashChain{
 		BlockHashes: make(map[types.Hash]bool),

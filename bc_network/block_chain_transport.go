@@ -279,7 +279,6 @@ func decodeWalletIdFromBytes(payload []byte) (string, error) {
 func (tr *DefaultBlockChainTransport) addTransaction(transaction *core.Transaction) error {
 	transaction.SetFirstSeen(time.Now().UnixNano())
 	err := tr.transactionPool.AddTransaction(transaction)
-	fmt.Println(tr.transactionPool.Len())
 	return err
 }
 

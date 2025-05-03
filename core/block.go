@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
-	"encoding/gob"
 	"fmt"
 	"io"
 	"time"
@@ -14,20 +13,7 @@ import (
 	"github.com/tusharjoshi4531/block-chain.git/util"
 )
 
-type Nonce interface {
-	util.Encoder
-	util.Decoder
-}
-
-type NilNonce struct{}
-
-func (*NilNonce) Encode(w io.Writer) error {
-	return nil
-}
-
-func (*NilNonce) Decode(r io.Reader) error {
-	return nil
-}
+type Nonce interface{}
 
 type BlockHeader struct {
 	Version       uint32
@@ -39,17 +25,7 @@ type BlockHeader struct {
 }
 
 func (header *BlockHeader) Encode(w io.Writer) error {
-	if err := util.EncoderGobEncodables(
-		w,
-		header.Version,
-		header.DataHash,
-		header.PrevBlockHash,
-		header.Timestamp,
-		header.Height,
-	); err != nil {
-		return err
-	}
-	return header.Nonce.Encode(w)
+	return util.EncoderGobEncodables(w, header)
 }
 
 func (header *BlockHeader) Bytes() ([]byte, error) {
@@ -61,17 +37,7 @@ func (header *BlockHeader) Bytes() ([]byte, error) {
 }
 
 func (header *BlockHeader) Decode(r io.Reader) error {
-	if err := util.DecodeGobDecodable(
-		r,
-		&header.Version,
-		&header.DataHash,
-		&header.PrevBlockHash,
-		&header.Timestamp,
-		&header.Height,
-	); err != nil {
-		return err
-	}
-	return header.Nonce.Decode(r)
+	return util.DecodeGobDecodable(r, header)
 }
 
 func (header *BlockHeader) Hash() (types.Hash, error) {
@@ -99,7 +65,7 @@ func NewBlock() *Block {
 			PrevBlockHash: types.Hash{},
 			Timestamp:     time.Now().UnixNano(),
 			Height:        0,
-			Nonce:         &NilNonce{},
+			Nonce:         0,
 		},
 		Transactions: []*Transaction{},
 		Validator:    &ecdsa.PublicKey{},
@@ -142,33 +108,15 @@ func (block *Block) Hash() (types.Hash, error) {
 }
 
 func (block *Block) EncodeData(w io.Writer) error {
-	len := len(block.Transactions)
-	if err := gob.NewEncoder(w).Encode(len); err != nil {
-		return err
-	}
-
-	for _, transaction := range block.Transactions {
-		if err := transaction.Encode(w); err != nil {
-			return err
-		}
-	}
-	return nil
+	return util.EncodeSlice(w, util.ToEncoderSlice(block.Transactions))
 }
 
 func (block *Block) DecodeData(r io.Reader) error {
-	len := 0
-	if err := gob.NewDecoder(r).Decode(&len); err != nil {
+	transactions, err := util.DecodeSlice(r, func() *Transaction { return NewTransaction([]byte{}) })
+	if err != nil {
 		return err
 	}
-
-	block.Transactions = make([]*Transaction, 0, len)
-	for i := 0; i < len; i++ {
-		transaction := NewTransaction([]byte{})
-		if err := transaction.Decode(r); err != nil {
-			return err
-		}
-		block.Transactions = append(block.Transactions, transaction)
-	}
+	block.Transactions = transactions
 	return nil
 }
 
@@ -245,28 +193,22 @@ func (block *Block) Bytes() ([]byte, error) {
 }
 
 func (block *Block) Decode(r io.Reader) error {
-	fmt.Println("Decoding")
 	if err := block.Header.Decode(r); err != nil {
 		return err
 	}
-	fmt.Println("DecodedHeader")
 
 	if err := block.DecodeData(r); err != nil {
 		return err
 	}
-	fmt.Println("DecodedData")
 
 	serializedValidator := &crypto.SerializablePublicKey{}
 	if err := serializedValidator.Decode(r); err != nil {
 		return err
 	}
 	block.Validator = crypto.DecodePublicKey(serializedValidator)
-	fmt.Println("Validator")
-	fmt.Println(block.Signature)
 	if err := block.Signature.Decode(r); err != nil {
 		return err
 	}
-	fmt.Println("Signature")
 	return nil
 }
 

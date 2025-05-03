@@ -1,0 +1,7 @@
+add_wallet A
+add_wallet B
+add_wallet C
+transact A B 1000
+transact B C 500
+mine A
+transact A C 50

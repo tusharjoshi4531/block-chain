@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"fmt"
 	"io"
 	"log"
@@ -19,7 +20,9 @@ import (
 
 type TCPServer struct {
 	*server.DefaultBlockChainServer
-	Ledger currency.LedgerState
+	BlockChain core.BlockChain
+	Ledger     currency.LedgerState
+	PrivKey    *ecdsa.PrivateKey
 }
 
 func NewTcpServer(address string) *TCPServer {
@@ -33,6 +36,8 @@ func NewTcpServer(address string) *TCPServer {
 		txPool,
 	)
 	return &TCPServer{
+		BlockChain: bc,
+		PrivKey:    privKey,
 		DefaultBlockChainServer: server.NewDefaultBlockChainServer(
 			bc,
 			txPool,
